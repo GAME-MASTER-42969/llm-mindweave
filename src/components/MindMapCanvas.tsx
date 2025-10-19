@@ -181,13 +181,14 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
 
       if (error) throw error;
 
-      const nodes = data.nodes || [];
+      const nodesData = data.nodes || [];
       const baseX = selectedNode ? selectedNode.position.x + 250 : 300;
       const baseY = selectedNode ? selectedNode.position.y : 300;
-      const angleStep = (2 * Math.PI) / nodes.length;
+      const angleStep = (2 * Math.PI) / nodesData.length;
       const radius = 200;
 
-      const insertPromises = nodes.map((nodeData: any, index: number) => {
+      // Create nodes
+      const insertPromises = nodesData.map((nodeData: any, index: number) => {
         const angle = index * angleStep;
         const x = baseX + radius * Math.cos(angle);
         const y = baseY + radius * Math.sin(angle);
@@ -213,6 +214,11 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
         throw new Error('Failed to create nodes');
       }
 
+      // Map nodeId to actual database ID
+      const nodeIdMap = new Map(
+        nodesData.map((node: any, idx: number) => [node.nodeId, createdNodes[idx]?.id])
+      );
+
       const newFlowNodes = createdNodes.map((node) => ({
         id: node.id,
         type: 'custom',
@@ -229,23 +235,44 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
 
       setNodes((nds) => [...nds, ...newFlowNodes]);
 
-      // Create edges from selected node to all new nodes
+      // Create edges based on AI connections + parent node
+      const edgesToCreate = [];
+      
+      // Connect selected node to all new nodes if there's a parent
       if (selectedNode) {
-        const edgePromises = createdNodes.map((node) =>
-          supabase.from('edges').insert({
+        createdNodes.forEach((node) => {
+          edgesToCreate.push({
             mind_map_id: mindMapId,
             source_node_id: selectedNode.id,
             target_node_id: node.id,
             user_id: user.user.id,
-          })
-        );
+          });
+        });
+      }
 
-        await Promise.all(edgePromises);
+      // Create AI-specified connections between nodes
+      nodesData.forEach((nodeData: any) => {
+        const sourceId = nodeIdMap.get(nodeData.nodeId);
+        nodeData.connectsTo?.forEach((targetNodeId: number) => {
+          const targetId = nodeIdMap.get(targetNodeId);
+          if (sourceId && targetId && sourceId !== targetId) {
+            edgesToCreate.push({
+              mind_map_id: mindMapId,
+              source_node_id: sourceId,
+              target_node_id: targetId,
+              user_id: user.user.id,
+            });
+          }
+        });
+      });
 
-        const newEdges = createdNodes.map((node) => ({
-          id: `${selectedNode.id}-${node.id}`,
-          source: selectedNode.id,
-          target: node.id,
+      if (edgesToCreate.length > 0) {
+        await supabase.from('edges').insert(edgesToCreate);
+
+        const newEdges = edgesToCreate.map((edge) => ({
+          id: `${edge.source_node_id}-${edge.target_node_id}`,
+          source: edge.source_node_id,
+          target: edge.target_node_id,
           type: 'smoothstep',
           animated: true,
           style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
@@ -255,7 +282,7 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
       }
 
       setAiPrompt('');
-      toast.success(`Generated ${createdNodes.length} nodes!`);
+      toast.success(`Generated ${createdNodes.length} connected nodes!`);
     } catch (error) {
       console.error('AI generation error:', error);
       toast.error('Failed to generate nodes');

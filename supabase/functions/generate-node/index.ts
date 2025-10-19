@@ -25,10 +25,12 @@ serve(async (req) => {
     ${context ? `Parent context: "${context}" - Create nodes that expand on this topic.` : 'Create nodes that comprehensively cover the topic.'}
     
     Each node should have:
+    - A unique nodeId (0, 1, 2, etc.)
     - A concise label (max 40 characters)
     - Detailed content explaining that aspect (2-3 sentences)
+    - connectsTo: array of nodeIds this node should connect to (create logical relationships)
     
-    Create a logical hierarchy that breaks down the topic systematically.`;
+    Create a logical hierarchy with meaningful connections between related concepts.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -47,7 +49,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "create_mind_map_nodes",
-              description: "Create multiple interconnected mind map nodes",
+              description: "Create multiple interconnected mind map nodes with relationships",
               parameters: {
                 type: "object",
                 properties: {
@@ -56,10 +58,15 @@ serve(async (req) => {
                     items: {
                       type: "object",
                       properties: {
+                        nodeId: { type: "number" },
                         label: { type: "string" },
-                        content: { type: "string" }
+                        content: { type: "string" },
+                        connectsTo: { 
+                          type: "array",
+                          items: { type: "number" }
+                        }
                       },
-                      required: ["label", "content"],
+                      required: ["nodeId", "label", "content", "connectsTo"],
                       additionalProperties: false
                     },
                     minItems: 3,
