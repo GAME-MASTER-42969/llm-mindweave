@@ -14,7 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      edges: {
+        Row: {
+          created_at: string
+          id: string
+          mind_map_id: string
+          source_node_id: string
+          target_node_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mind_map_id: string
+          source_node_id: string
+          target_node_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mind_map_id?: string
+          source_node_id?: string
+          target_node_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edges_mind_map_id_fkey"
+            columns: ["mind_map_id"]
+            isOneToOne: false
+            referencedRelation: "mind_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edges_source_node_id_fkey"
+            columns: ["source_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edges_target_node_id_fkey"
+            columns: ["target_node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mind_maps: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nodes: {
+        Row: {
+          color: string | null
+          content: string | null
+          created_at: string
+          id: string
+          label: string
+          mind_map_id: string
+          position_x: number
+          position_y: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          mind_map_id: string
+          position_x?: number
+          position_y?: number
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          content?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          mind_map_id?: string
+          position_x?: number
+          position_y?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nodes_mind_map_id_fkey"
+            columns: ["mind_map_id"]
+            isOneToOne: false
+            referencedRelation: "mind_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
