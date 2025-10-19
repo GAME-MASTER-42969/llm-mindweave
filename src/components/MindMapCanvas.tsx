@@ -87,6 +87,8 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
         id: edge.id,
         source: edge.source_node_id,
         target: edge.target_node_id,
+        sourceHandle: edge.source_handle,
+        targetHandle: edge.target_handle,
         type: 'smoothstep',
         animated: true,
         style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
@@ -104,6 +106,8 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
         id: `${connection.source}-${connection.target}`,
         source: connection.source!,
         target: connection.target!,
+        sourceHandle: connection.sourceHandle || undefined,
+        targetHandle: connection.targetHandle || undefined,
         type: 'smoothstep',
         animated: true,
         style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
@@ -113,6 +117,8 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
         mind_map_id: mindMapId,
         source_node_id: connection.source,
         target_node_id: connection.target,
+        source_handle: connection.sourceHandle,
+        target_handle: connection.targetHandle,
         user_id: user.user.id,
       });
 
@@ -186,6 +192,8 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
             id: `${connectionState.fromNode.id}-${data.id}`,
             source: connectionState.fromNode.id,
             target: data.id,
+            sourceHandle: connectionState.fromHandle?.id || undefined,
+            targetHandle: undefined,
             type: 'smoothstep',
             animated: true,
             style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
@@ -195,6 +203,8 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
             mind_map_id: mindMapId,
             source_node_id: connectionState.fromNode.id,
             target_node_id: data.id,
+            source_handle: connectionState.fromHandle?.id,
+            target_handle: null,
             user_id: user.user.id,
           });
 
