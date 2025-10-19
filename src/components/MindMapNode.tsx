@@ -26,22 +26,26 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
       <Handle
         type="target"
         position={Position.Top}
+        id="top-target"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       <Handle
         type="source"
         position={Position.Top}
+        id="top-source"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       
       <Handle
         type="target"
         position={Position.Left}
+        id="left-target"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       <Handle
         type="source"
         position={Position.Left}
+        id="left-source"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       
@@ -59,22 +63,26 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
       <Handle
         type="target"
         position={Position.Right}
+        id="right-target"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       <Handle
         type="source"
         position={Position.Right}
+        id="right-source"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       
       <Handle
         type="target"
         position={Position.Bottom}
+        id="bottom-target"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       <Handle
         type="source"
         position={Position.Bottom}
+        id="bottom-source"
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
     </div>
