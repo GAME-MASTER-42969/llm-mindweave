@@ -21,7 +21,7 @@ serve(async (req) => {
     console.log('Generating node with prompt:', prompt);
 
     const systemPrompt = `You are an AI assistant helping to create mind map nodes. 
-    When given a prompt, break it down into 3-5 key subtopics or aspects.
+    When given a prompt, break it down into relevant subtopics or aspects (you can create as many as needed to cover the topic well).
     ${context ? `Parent context: "${context}" - Create nodes that expand on this topic.` : 'Create nodes that comprehensively cover the topic.'}
     
     First, determine the best diagram type for this topic:
@@ -36,14 +36,16 @@ serve(async (req) => {
     - A concise label (max 40 characters)
     - Detailed content explaining that aspect (2-3 sentences)
     - connectsTo: array of nodeIds this node should connect to (create logical relationships)
-    - x, y: position coordinates that match the chosen diagram type (values between -400 and 400)
+    - x, y: position coordinates that match the chosen diagram type (values between -600 and 600)
     
-    Position nodes to create a clear visual structure that matches the diagram type.
-    For hierarchical: place parent nodes higher (negative y), children lower
-    For radial: arrange nodes in a circle around center
-    For linear: arrange nodes left to right with consistent spacing
-    For network: spread nodes to minimize edge crossings
-    For matrix: use grid-aligned positions`;
+    CRITICAL: Position nodes with GENEROUS SPACING to prevent overlap:
+    - Hierarchical: vertical spacing of at least 250px between levels, horizontal spacing of at least 300px
+    - Radial: radius of at least 400px from center
+    - Linear: horizontal spacing of at least 350px between consecutive nodes
+    - Network: maintain minimum distance of 300px between any two nodes
+    - Matrix: grid cells of at least 350px x 300px
+    
+    Position nodes to create a clear, non-overlapping visual structure that matches the diagram type.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -79,8 +81,8 @@ serve(async (req) => {
                         nodeId: { type: "number" },
                         label: { type: "string" },
                         content: { type: "string" },
-                        x: { type: "number", description: "X position matching diagram type (-400 to 400)" },
-                        y: { type: "number", description: "Y position matching diagram type (-400 to 400)" },
+                        x: { type: "number", description: "X position matching diagram type (-600 to 600) with generous spacing" },
+                        y: { type: "number", description: "Y position matching diagram type (-600 to 600) with generous spacing" },
                         connectsTo: { 
                           type: "array",
                           items: { type: "number" }
@@ -89,8 +91,7 @@ serve(async (req) => {
                       required: ["nodeId", "label", "content", "x", "y", "connectsTo"],
                       additionalProperties: false
                     },
-                    minItems: 3,
-                    maxItems: 5
+                    minItems: 3
                   }
                 },
                 required: ["diagramType", "nodes"],
