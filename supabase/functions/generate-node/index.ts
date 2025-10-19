@@ -29,8 +29,10 @@ serve(async (req) => {
     - A concise label (max 40 characters)
     - Detailed content explaining that aspect (2-3 sentences)
     - connectsTo: array of nodeIds this node should connect to (create logical relationships)
+    - x, y: position coordinates relative to center (values between -300 and 300)
     
-    Create a logical hierarchy with meaningful connections between related concepts.`;
+    Position nodes thoughtfully to create a clear visual hierarchy and minimize edge crossings.
+    Place closely related concepts near each other.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -49,7 +51,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "create_mind_map_nodes",
-              description: "Create multiple interconnected mind map nodes with relationships",
+              description: "Create multiple interconnected mind map nodes with positions and relationships",
               parameters: {
                 type: "object",
                 properties: {
@@ -61,12 +63,14 @@ serve(async (req) => {
                         nodeId: { type: "number" },
                         label: { type: "string" },
                         content: { type: "string" },
+                        x: { type: "number", description: "X position relative to center (-300 to 300)" },
+                        y: { type: "number", description: "Y position relative to center (-300 to 300)" },
                         connectsTo: { 
                           type: "array",
                           items: { type: "number" }
                         }
                       },
-                      required: ["nodeId", "label", "content", "connectsTo"],
+                      required: ["nodeId", "label", "content", "x", "y", "connectsTo"],
                       additionalProperties: false
                     },
                     minItems: 3,

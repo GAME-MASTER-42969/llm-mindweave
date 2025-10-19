@@ -194,17 +194,11 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
       if (error) throw error;
 
       const nodesData = data.nodes || [];
-      const baseX = selectedNode ? selectedNode.position.x + 250 : 300;
+      const baseX = selectedNode ? selectedNode.position.x : 400;
       const baseY = selectedNode ? selectedNode.position.y : 300;
-      const angleStep = (2 * Math.PI) / nodesData.length;
-      const radius = 200;
 
-      // Create nodes
-      const insertPromises = nodesData.map((nodeData: any, index: number) => {
-        const angle = index * angleStep;
-        const x = baseX + radius * Math.cos(angle);
-        const y = baseY + radius * Math.sin(angle);
-
+      // Create nodes using AI-specified positions
+      const insertPromises = nodesData.map((nodeData: any) => {
         return supabase
           .from('nodes')
           .insert({
@@ -212,8 +206,8 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
             user_id: user.user.id,
             label: nodeData.label,
             content: nodeData.content,
-            position_x: x,
-            position_y: y,
+            position_x: baseX + (nodeData.x || 0),
+            position_y: baseY + (nodeData.y || 0),
           })
           .select()
           .single();
