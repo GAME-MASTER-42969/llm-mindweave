@@ -12,6 +12,7 @@ import {
   Edge,
   BackgroundVariant,
   useReactFlow,
+  ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,7 +38,7 @@ const nodeTypes = {
   custom: MindMapNode,
 };
 
-export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
+const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -518,5 +519,13 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
         onDelete={deleteNode}
       />
     </div>
+  );
+};
+
+export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
+  return (
+    <ReactFlowProvider>
+      <MindMapCanvasInner mindMapId={mindMapId} />
+    </ReactFlowProvider>
   );
 };
