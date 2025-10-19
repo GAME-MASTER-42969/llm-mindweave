@@ -21,10 +21,14 @@ serve(async (req) => {
     console.log('Generating node with prompt:', prompt);
 
     const systemPrompt = `You are an AI assistant helping to create mind map nodes. 
-    When given a prompt, generate a concise but meaningful node label (max 50 characters) and detailed content.
-    Context: ${context || 'No parent context provided'}
+    When given a prompt, break it down into 3-5 key subtopics or aspects.
+    ${context ? `Parent context: "${context}" - Create nodes that expand on this topic.` : 'Create nodes that comprehensively cover the topic.'}
     
-    Respond in JSON format: { "label": "node title", "content": "detailed description and notes" }`;
+    Each node should have:
+    - A concise label (max 40 characters)
+    - Detailed content explaining that aspect (2-3 sentences)
+    
+    Create a logical hierarchy that breaks down the topic systematically.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -38,6 +42,37 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "create_mind_map_nodes",
+              description: "Create multiple interconnected mind map nodes",
+              parameters: {
+                type: "object",
+                properties: {
+                  nodes: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        label: { type: "string" },
+                        content: { type: "string" }
+                      },
+                      required: ["label", "content"],
+                      additionalProperties: false
+                    },
+                    minItems: 3,
+                    maxItems: 5
+                  }
+                },
+                required: ["nodes"],
+                additionalProperties: false
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "create_mind_map_nodes" } }
       }),
     });
 
@@ -48,20 +83,30 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const toolCall = data.choices[0].message.tool_calls?.[0];
     
-    // Try to parse as JSON, fallback to using the content as label
     let result;
-    try {
-      result = JSON.parse(content);
-    } catch {
+    if (toolCall?.function?.arguments) {
+      try {
+        result = JSON.parse(toolCall.function.arguments);
+      } catch {
+        result = {
+          nodes: [{
+            label: prompt.substring(0, 40),
+            content: "Failed to parse AI response. Please try again."
+          }]
+        };
+      }
+    } else {
       result = {
-        label: prompt.substring(0, 50),
-        content: content
+        nodes: [{
+          label: prompt.substring(0, 40),
+          content: data.choices[0].message.content || "No content generated."
+        }]
       };
     }
 
-    console.log('Generated node:', result);
+    console.log('Generated nodes:', result);
     
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

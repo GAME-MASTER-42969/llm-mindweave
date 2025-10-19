@@ -181,66 +181,84 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
 
       if (error) throw error;
 
-      const newNode = {
-        mind_map_id: mindMapId,
-        user_id: user.user.id,
-        label: data.label,
-        content: data.content,
-        position_x: selectedNode ? selectedNode.position.x + 200 : Math.random() * 500,
-        position_y: selectedNode ? selectedNode.position.y : Math.random() * 500,
-      };
+      const nodes = data.nodes || [];
+      const baseX = selectedNode ? selectedNode.position.x + 250 : 300;
+      const baseY = selectedNode ? selectedNode.position.y : 300;
+      const angleStep = (2 * Math.PI) / nodes.length;
+      const radius = 200;
 
-      const { data: nodeData, error: insertError } = await supabase
-        .from('nodes')
-        .insert(newNode)
-        .select()
-        .single();
+      const insertPromises = nodes.map((nodeData: any, index: number) => {
+        const angle = index * angleStep;
+        const x = baseX + radius * Math.cos(angle);
+        const y = baseY + radius * Math.sin(angle);
 
-      if (insertError) throw insertError;
+        return supabase
+          .from('nodes')
+          .insert({
+            mind_map_id: mindMapId,
+            user_id: user.user.id,
+            label: nodeData.label,
+            content: nodeData.content,
+            position_x: x,
+            position_y: y,
+          })
+          .select()
+          .single();
+      });
 
-      const flowNode = {
-        id: nodeData.id,
+      const results = await Promise.all(insertPromises);
+      const createdNodes = results.filter(r => !r.error).map(r => r.data);
+
+      if (createdNodes.length === 0) {
+        throw new Error('Failed to create nodes');
+      }
+
+      const newFlowNodes = createdNodes.map((node) => ({
+        id: node.id,
         type: 'custom',
-        position: { x: nodeData.position_x, y: nodeData.position_y },
-        data: { 
-          label: nodeData.label, 
-          content: nodeData.content,
-          onOpenPanel: (node: Node) => {
-            setSelectedNode(node);
+        position: { x: node.position_x, y: node.position_y },
+        data: {
+          label: node.label,
+          content: node.content,
+          onOpenPanel: (n: Node) => {
+            setSelectedNode(n);
             setIsPanelOpen(true);
           }
         },
-      };
+      }));
 
-      setNodes((nds) => [...nds, flowNode]);
+      setNodes((nds) => [...nds, ...newFlowNodes]);
 
-      // Create edge if there's a selected node
+      // Create edges from selected node to all new nodes
       if (selectedNode) {
-        const { error: edgeError } = await supabase.from('edges').insert({
-          mind_map_id: mindMapId,
-          source_node_id: selectedNode.id,
-          target_node_id: nodeData.id,
-          user_id: user.user.id,
-        });
+        const edgePromises = createdNodes.map((node) =>
+          supabase.from('edges').insert({
+            mind_map_id: mindMapId,
+            source_node_id: selectedNode.id,
+            target_node_id: node.id,
+            user_id: user.user.id,
+          })
+        );
 
-        if (!edgeError) {
-          const newEdge: Edge = {
-            id: `${selectedNode.id}-${nodeData.id}`,
-            source: selectedNode.id,
-            target: nodeData.id,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
-          };
-          setEdges((eds) => [...eds, newEdge]);
-        }
+        await Promise.all(edgePromises);
+
+        const newEdges = createdNodes.map((node) => ({
+          id: `${selectedNode.id}-${node.id}`,
+          source: selectedNode.id,
+          target: node.id,
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
+        }));
+
+        setEdges((eds) => [...eds, ...newEdges]);
       }
 
       setAiPrompt('');
-      toast.success('Node generated with AI!');
+      toast.success(`Generated ${createdNodes.length} nodes!`);
     } catch (error) {
       console.error('AI generation error:', error);
-      toast.error('Failed to generate node');
+      toast.error('Failed to generate nodes');
     } finally {
       setIsGenerating(false);
     }
