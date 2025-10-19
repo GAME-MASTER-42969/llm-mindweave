@@ -11,6 +11,7 @@ import {
   Node,
   Edge,
   BackgroundVariant,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +45,7 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const { screenToFlowPosition } = useReactFlow();
 
   // Load nodes and edges
   useEffect(() => {
@@ -122,6 +124,88 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
       toast.success('Connection created');
     },
     [mindMapId, setEdges]
+  );
+
+  const onConnectEnd = useCallback(
+    async (event: any, connectionState: any) => {
+      // If no target node, create a new node
+      if (!connectionState.toNode) {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) return;
+
+        // Get mouse position relative to the flow
+        const targetIsPane = event.target.classList.contains('react-flow__pane');
+        if (!targetIsPane) return;
+
+        const position = screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+
+        const newNode = {
+          mind_map_id: mindMapId,
+          user_id: user.user.id,
+          label: 'New Node',
+          content: 'Add your notes here...',
+          position_x: position.x,
+          position_y: position.y,
+        };
+
+        const { data, error } = await supabase
+          .from('nodes')
+          .insert(newNode)
+          .select()
+          .single();
+
+        if (error || !data) {
+          toast.error('Failed to create node');
+          return;
+        }
+
+        const flowNode: Node = {
+          id: data.id,
+          type: 'custom',
+          position: { x: data.position_x, y: data.position_y },
+          data: {
+            label: data.label,
+            content: data.content,
+            color: data.color,
+            onOpenPanel: (node: Node) => {
+              setSelectedNode(node);
+              setIsPanelOpen(true);
+            },
+          },
+        };
+
+        setNodes((nds) => [...nds, flowNode]);
+
+        // Create edge from source to new node
+        if (connectionState.fromNode) {
+          const newEdge: Edge = {
+            id: `${connectionState.fromNode.id}-${data.id}`,
+            source: connectionState.fromNode.id,
+            target: data.id,
+            type: 'smoothstep',
+            animated: true,
+            style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
+          };
+
+          const { error: edgeError } = await supabase.from('edges').insert({
+            mind_map_id: mindMapId,
+            source_node_id: connectionState.fromNode.id,
+            target_node_id: data.id,
+            user_id: user.user.id,
+          });
+
+          if (!edgeError) {
+            setEdges((eds) => addEdge(newEdge, eds));
+          }
+        }
+
+        toast.success('Node created');
+      }
+    },
+    [mindMapId, screenToFlowPosition, setNodes, setEdges]
   );
 
   const onNodeDragStop = async (_: any, node: Node) => {
@@ -374,6 +458,7 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
@@ -398,10 +483,6 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
         <Button onClick={generateWithAI} disabled={isGenerating} className="gap-2">
           <Sparkles className="w-4 h-4" />
           {isGenerating ? 'Generating...' : 'Generate'}
-        </Button>
-        <Button onClick={addNewNode} variant="secondary" className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Node
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>

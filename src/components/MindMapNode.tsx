@@ -28,6 +28,22 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
         position={Position.Top}
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
+      <Handle
+        type="source"
+        position={Position.Top}
+        className="w-2 h-2 !bg-accent border-2 border-background"
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="w-2 h-2 !bg-accent border-2 border-background"
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        className="w-2 h-2 !bg-accent border-2 border-background"
+      />
       
       <div className="text-center">
         <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
@@ -40,6 +56,22 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
         )}
       </div>
 
+      <Handle
+        type="target"
+        position={Position.Right}
+        className="w-2 h-2 !bg-accent border-2 border-background"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-2 h-2 !bg-accent border-2 border-background"
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        className="w-2 h-2 !bg-accent border-2 border-background"
+      />
       <Handle
         type="source"
         position={Position.Bottom}
