@@ -483,7 +483,7 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
       </ReactFlow>
 
       {/* Floating Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-card/90 backdrop-blur-md p-4 rounded-xl border border-border shadow-lg animate-fade-in">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-card backdrop-blur-md p-4 rounded-xl border-2 border-primary/30 shadow-xl animate-fade-in">
         <Input
           placeholder="Generate node with AI..."
           value={aiPrompt}
