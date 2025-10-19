@@ -19,7 +19,9 @@ export type Database = {
           created_at: string
           id: string
           mind_map_id: string
+          source_handle: string | null
           source_node_id: string
+          target_handle: string | null
           target_node_id: string
           user_id: string
         }
@@ -27,7 +29,9 @@ export type Database = {
           created_at?: string
           id?: string
           mind_map_id: string
+          source_handle?: string | null
           source_node_id: string
+          target_handle?: string | null
           target_node_id: string
           user_id: string
         }
@@ -35,7 +39,9 @@ export type Database = {
           created_at?: string
           id?: string
           mind_map_id?: string
+          source_handle?: string | null
           source_node_id?: string
+          target_handle?: string | null
           target_node_id?: string
           user_id?: string
         }

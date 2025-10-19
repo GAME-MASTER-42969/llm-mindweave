@@ -83,12 +83,12 @@ const MindMapCanvasInner = ({ mindMapId }: { mindMapId: string }) => {
     }
 
     if (edgesData) {
-      const flowEdges = edgesData.map(edge => ({
+      const flowEdges = edgesData.map((edge: any) => ({
         id: edge.id,
         source: edge.source_node_id,
         target: edge.target_node_id,
-        sourceHandle: edge.source_handle,
-        targetHandle: edge.target_handle,
+        sourceHandle: edge.source_handle || undefined,
+        targetHandle: edge.target_handle || undefined,
         type: 'smoothstep',
         animated: true,
         style: { stroke: 'hsl(var(--accent))', strokeWidth: 2 },
