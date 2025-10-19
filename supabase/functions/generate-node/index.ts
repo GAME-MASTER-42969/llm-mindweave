@@ -24,15 +24,26 @@ serve(async (req) => {
     When given a prompt, break it down into 3-5 key subtopics or aspects.
     ${context ? `Parent context: "${context}" - Create nodes that expand on this topic.` : 'Create nodes that comprehensively cover the topic.'}
     
-    Each node should have:
+    First, determine the best diagram type for this topic:
+    - "hierarchical": Top-down tree structure (best for organizational charts, classification)
+    - "radial": Central concept with branches radiating outward (best for exploring a central idea)
+    - "linear": Sequential flow left-to-right (best for processes, timelines, steps)
+    - "network": Interconnected web (best for showing complex relationships)
+    - "matrix": Grid layout (best for comparing multiple dimensions)
+    
+    Then create nodes with:
     - A unique nodeId (0, 1, 2, etc.)
     - A concise label (max 40 characters)
     - Detailed content explaining that aspect (2-3 sentences)
     - connectsTo: array of nodeIds this node should connect to (create logical relationships)
-    - x, y: position coordinates relative to center (values between -300 and 300)
+    - x, y: position coordinates that match the chosen diagram type (values between -400 and 400)
     
-    Position nodes thoughtfully to create a clear visual hierarchy and minimize edge crossings.
-    Place closely related concepts near each other.`;
+    Position nodes to create a clear visual structure that matches the diagram type.
+    For hierarchical: place parent nodes higher (negative y), children lower
+    For radial: arrange nodes in a circle around center
+    For linear: arrange nodes left to right with consistent spacing
+    For network: spread nodes to minimize edge crossings
+    For matrix: use grid-aligned positions`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -51,10 +62,15 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "create_mind_map_nodes",
-              description: "Create multiple interconnected mind map nodes with positions and relationships",
+              description: "Create multiple interconnected mind map nodes with optimal layout",
               parameters: {
                 type: "object",
                 properties: {
+                  diagramType: {
+                    type: "string",
+                    enum: ["hierarchical", "radial", "linear", "network", "matrix"],
+                    description: "The type of diagram layout that best represents this topic"
+                  },
                   nodes: {
                     type: "array",
                     items: {
@@ -63,8 +79,8 @@ serve(async (req) => {
                         nodeId: { type: "number" },
                         label: { type: "string" },
                         content: { type: "string" },
-                        x: { type: "number", description: "X position relative to center (-300 to 300)" },
-                        y: { type: "number", description: "Y position relative to center (-300 to 300)" },
+                        x: { type: "number", description: "X position matching diagram type (-400 to 400)" },
+                        y: { type: "number", description: "Y position matching diagram type (-400 to 400)" },
                         connectsTo: { 
                           type: "array",
                           items: { type: "number" }
@@ -77,7 +93,7 @@ serve(async (req) => {
                     maxItems: 5
                   }
                 },
-                required: ["nodes"],
+                required: ["diagramType", "nodes"],
                 additionalProperties: false
               }
             }
@@ -100,19 +116,30 @@ serve(async (req) => {
     if (toolCall?.function?.arguments) {
       try {
         result = JSON.parse(toolCall.function.arguments);
+        console.log('Diagram type:', result.diagramType);
       } catch {
         result = {
+          diagramType: 'network',
           nodes: [{
+            nodeId: 0,
             label: prompt.substring(0, 40),
-            content: "Failed to parse AI response. Please try again."
+            content: "Failed to parse AI response. Please try again.",
+            x: 0,
+            y: 0,
+            connectsTo: []
           }]
         };
       }
     } else {
       result = {
+        diagramType: 'network',
         nodes: [{
+          nodeId: 0,
           label: prompt.substring(0, 40),
-          content: data.choices[0].message.content || "No content generated."
+          content: data.choices[0].message.content || "No content generated.",
+          x: 0,
+          y: 0,
+          connectsTo: []
         }]
       };
     }

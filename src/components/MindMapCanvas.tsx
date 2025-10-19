@@ -193,7 +193,10 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
 
       if (error) throw error;
 
+      const diagramType = data.diagramType || 'network';
       const nodesData = data.nodes || [];
+      console.log(`Creating ${diagramType} diagram with ${nodesData.length} nodes`);
+      
       const baseX = selectedNode ? selectedNode.position.x : 400;
       const baseY = selectedNode ? selectedNode.position.y : 300;
 
@@ -288,7 +291,7 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
       }
 
       setAiPrompt('');
-      toast.success(`Generated ${createdNodes.length} connected nodes!`);
+      toast.success(`Generated ${createdNodes.length} nodes in ${diagramType} layout!`);
     } catch (error) {
       console.error('AI generation error:', error);
       toast.error('Failed to generate nodes');
