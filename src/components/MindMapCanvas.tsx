@@ -17,9 +17,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { MindMapNode } from './MindMapNode';
 import { NodePanel } from './NodePanel';
 import { Button } from './ui/button';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Input } from './ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 
 const nodeTypes = {
   custom: MindMapNode,
@@ -32,6 +43,7 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Load nodes and edges
   useEffect(() => {
@@ -323,6 +335,40 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
     toast.success('Node deleted');
   };
 
+  const clearAllNodes = async () => {
+    setIsClearing(true);
+    try {
+      // Delete all edges first (due to foreign key constraints)
+      const { error: edgesError } = await supabase
+        .from('edges')
+        .delete()
+        .eq('mind_map_id', mindMapId);
+
+      if (edgesError) throw edgesError;
+
+      // Delete all nodes
+      const { error: nodesError } = await supabase
+        .from('nodes')
+        .delete()
+        .eq('mind_map_id', mindMapId);
+
+      if (nodesError) throw nodesError;
+
+      // Clear local state
+      setNodes([]);
+      setEdges([]);
+      setSelectedNode(null);
+      setIsPanelOpen(false);
+      
+      toast.success('Canvas cleared');
+    } catch (error) {
+      console.error('Clear error:', error);
+      toast.error('Failed to clear canvas');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
     <div className="w-full h-screen relative">
       <ReactFlow
@@ -360,6 +406,26 @@ export const MindMapCanvas = ({ mindMapId }: { mindMapId: string }) => {
           <Plus className="w-4 h-4" />
           Add Node
         </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="gap-2" disabled={isClearing}>
+              <Trash2 className="w-4 h-4" />
+              Clear All
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear entire canvas?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete all nodes and connections. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={clearAllNodes}>Clear All</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Side Panel */}
