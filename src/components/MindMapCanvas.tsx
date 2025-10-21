@@ -334,16 +334,18 @@ const MindMapCanvasInner = ({
         });
       }
 
-      // Create AI-specified connections between nodes
+      // Create AI-specified connections between nodes with handles
       nodesData.forEach((nodeData: any) => {
         const sourceId = nodeIdMap.get(nodeData.nodeId);
-        nodeData.connectsTo?.forEach((targetNodeId: number) => {
-          const targetId = nodeIdMap.get(targetNodeId);
+        nodeData.connections?.forEach((conn: any) => {
+          const targetId = nodeIdMap.get(conn.targetNodeId);
           if (sourceId && targetId && sourceId !== targetId) {
             edgesToCreate.push({
               mind_map_id: mindMapId,
               source_node_id: sourceId,
               target_node_id: targetId,
+              source_handle: conn.sourceHandle,
+              target_handle: conn.targetHandle,
               user_id: user.user.id
             });
           }
@@ -355,6 +357,8 @@ const MindMapCanvasInner = ({
           id: `${edge.source_node_id}-${edge.target_node_id}`,
           source: edge.source_node_id,
           target: edge.target_node_id,
+          sourceHandle: edge.source_handle,
+          targetHandle: edge.target_handle,
           type: 'smoothstep',
           animated: true,
           style: {

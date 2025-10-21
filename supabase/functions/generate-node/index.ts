@@ -20,32 +20,43 @@ serve(async (req) => {
 
     console.log('Generating node with prompt:', prompt);
 
-    const systemPrompt = `You are an AI assistant helping to create mind map nodes. 
-    When given a prompt, break it down into relevant subtopics or aspects (you can create as many as needed to cover the topic well).
-    ${context ? `Parent context: "${context}" - Create nodes that expand on this topic.` : 'Create nodes that comprehensively cover the topic.'}
+    const systemPrompt = `You are an AI assistant creating professional mind map layouts. 
+    When given a prompt, break it down into relevant subtopics with optimal visual organization.
+    ${context ? `Parent context: "${context}" - Expand on this with related nodes positioned logically around it.` : 'Create a comprehensive mind map covering the topic.'}
     
-    First, determine the best diagram type for this topic:
-    - "hierarchical": Top-down tree structure (best for organizational charts, classification)
-    - "radial": Central concept with branches radiating outward (best for exploring a central idea)
-    - "linear": Sequential flow left-to-right (best for processes, timelines, steps)
-    - "network": Interconnected web (best for showing complex relationships)
-    - "matrix": Grid layout (best for comparing multiple dimensions)
+    DIAGRAM TYPE SELECTION:
+    - "hierarchical": Top-down tree (organizational charts, taxonomies, processes with clear parent-child relationships)
+    - "radial": Hub-and-spoke from center (brainstorming, exploring one central concept with categories)
+    - "linear": Left-to-right flow (timelines, sequential steps, cause-and-effect chains)
+    - "network": Interconnected web (complex relationships, systems thinking, multiple interdependencies)
+    - "matrix": Grid layout (comparisons, 2D classifications, feature matrices)
     
-    Then create nodes with:
-    - A unique nodeId (0, 1, 2, etc.)
-    - A concise label (max 40 characters)
-    - Detailed content explaining that aspect (2-3 sentences)
-    - connectsTo: array of nodeIds this node should connect to (create logical relationships)
-    - x, y: position coordinates that match the chosen diagram type (values between -600 and 600)
+    POSITIONING STRATEGY:
+    - Hierarchical: Place parent at top (y: -400), children below (y: -150, 100, 350) with x spacing of 400px
+    - Radial: Center node at (0, 0), surrounding nodes at radius 450-500px in circular pattern
+    - Linear: Space nodes left-to-right with 450px horizontal gaps, y: 0 for main flow
+    - Network: Distribute evenly with minimum 350px between any two nodes, consider visual balance
+    - Matrix: Use grid cells 400px × 350px, align nodes to grid intersections
     
-    CRITICAL: Position nodes with GENEROUS SPACING to prevent overlap:
-    - Hierarchical: vertical spacing of at least 250px between levels, horizontal spacing of at least 300px
-    - Radial: radius of at least 400px from center
-    - Linear: horizontal spacing of at least 350px between consecutive nodes
-    - Network: maintain minimum distance of 300px between any two nodes
-    - Matrix: grid cells of at least 350px x 300px
+    CONNECTION HANDLES (critical for clean edges):
+    Each node has 4 connection points: "top", "right", "bottom", "left"
+    - Hierarchical: parent uses "bottom", children use "top"
+    - Radial: center uses all sides based on direction to target, outer nodes point toward center
+    - Linear: use "right" to "left" for forward flow
+    - Network: choose handle that creates shortest, least overlapping path
+    - Matrix: use handles that create horizontal/vertical lines when possible
     
-    Position nodes to create a clear, non-overlapping visual structure that matches the diagram type.`;
+    For each connection specify:
+    - sourceHandle: which point on the source node ("top", "right", "bottom", "left")
+    - targetHandle: which point on the target node ("top", "right", "bottom", "left")
+    
+    LAYOUT PRINCIPLES:
+    1. Maintain generous spacing (minimum 350px between nodes)
+    2. Create visual hierarchy through positioning
+    3. Group related concepts spatially
+    4. Minimize edge crossings by smart handle selection
+    5. Balance the overall composition
+    6. Use handle directions that match the diagram flow`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -79,16 +90,25 @@ serve(async (req) => {
                       type: "object",
                       properties: {
                         nodeId: { type: "number" },
-                        label: { type: "string" },
-                        content: { type: "string" },
-                        x: { type: "number", description: "X position matching diagram type (-600 to 600) with generous spacing" },
-                        y: { type: "number", description: "Y position matching diagram type (-600 to 600) with generous spacing" },
-                        connectsTo: { 
+                        label: { type: "string", description: "Concise label, max 40 characters" },
+                        content: { type: "string", description: "Detailed explanation, 2-3 sentences" },
+                        x: { type: "number", description: "X position (-600 to 600), maintain 350px minimum spacing" },
+                        y: { type: "number", description: "Y position (-600 to 600), position according to diagram type" },
+                        connections: { 
                           type: "array",
-                          items: { type: "number" }
+                          items: {
+                            type: "object",
+                            properties: {
+                              targetNodeId: { type: "number", description: "Node ID to connect to" },
+                              sourceHandle: { type: "string", enum: ["top", "right", "bottom", "left"], description: "Connection point on this node" },
+                              targetHandle: { type: "string", enum: ["top", "right", "bottom", "left"], description: "Connection point on target node" }
+                            },
+                            required: ["targetNodeId", "sourceHandle", "targetHandle"]
+                          },
+                          description: "Connections with specific handle positions for clean edge routing"
                         }
                       },
-                      required: ["nodeId", "label", "content", "x", "y", "connectsTo"],
+                      required: ["nodeId", "label", "content", "x", "y", "connections"],
                       additionalProperties: false
                     },
                     minItems: 3
@@ -127,7 +147,7 @@ serve(async (req) => {
             content: "Failed to parse AI response. Please try again.",
             x: 0,
             y: 0,
-            connectsTo: []
+            connections: []
           }]
         };
       }
@@ -140,7 +160,7 @@ serve(async (req) => {
           content: data.choices[0].message.content || "No content generated.",
           x: 0,
           y: 0,
-          connectsTo: []
+          connections: []
         }]
       };
     }
