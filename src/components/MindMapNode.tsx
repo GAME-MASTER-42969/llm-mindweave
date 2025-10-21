@@ -8,6 +8,7 @@ interface CustomNodeProps {
     label: string;
     content?: string;
     color?: string;
+    diagramType?: string;
     onOpenPanel?: (node: any) => void;
     onSelectForAI?: (node: any) => void;
   };
@@ -35,35 +36,41 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
     }
   };
 
+  const nodeStyle = data.color ? {
+    borderColor: data.color,
+    boxShadow: `0 4px 20px ${data.color}30, 0 0 40px ${data.color}15`
+  } : {};
+
   return (
     <div
-      className="px-4 py-2 rounded-lg border-2 border-primary/50 bg-card shadow-md hover:shadow-lg transition-all duration-300 min-w-[120px] max-w-[180px] cursor-pointer group hover:scale-105 relative"
+      className="px-5 py-3 rounded-xl border-2 bg-card shadow-lg hover:shadow-2xl transition-all duration-300 min-w-[140px] max-w-[200px] cursor-pointer group hover:scale-110 relative backdrop-blur-sm"
+      style={nodeStyle}
       onClick={handleClick}
     >
       <Handle
         type="target"
         position={Position.Top}
         id="top-target"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Top}
         id="top-source"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       
       <Handle
         type="target"
         position={Position.Left}
         id="left-target"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-source"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       
       {/* Action buttons - shown on hover */}
@@ -87,11 +94,11 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
       </div>
 
       <div className="text-center">
-        <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
+        <div className="font-semibold text-sm text-foreground transition-colors leading-tight">
           {data.label}
         </div>
         {data.content && (
-          <div className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">
+          <div className="text-[11px] text-muted-foreground line-clamp-2 mt-1.5 leading-snug">
             {data.content}
           </div>
         )}
@@ -101,26 +108,26 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
         type="target"
         position={Position.Right}
         id="right-target"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-source"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       
       <Handle
         type="target"
         position={Position.Bottom}
         id="bottom-target"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom-source"
-        className="w-2 h-2 !bg-accent border-2 border-background"
+        className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
     </div>
   );

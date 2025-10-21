@@ -275,18 +275,34 @@ const MindMapCanvasInner = ({
       const diagramType = data.diagramType || 'network';
       const nodesData = data.nodes || [];
       console.log(`Creating ${diagramType} diagram with ${nodesData.length} nodes`);
-      const baseX = selectedNode ? selectedNode.position.x : 400;
+      
+      // Calculate center point based on context
+      const baseX = selectedNode ? selectedNode.position.x + 200 : 400;
       const baseY = selectedNode ? selectedNode.position.y : 300;
 
-      // Create nodes using AI-specified positions
-      const insertPromises = nodesData.map((nodeData: any) => {
+      // Assign colors based on diagram type and node hierarchy
+      const getNodeColor = (index: number, total: number) => {
+        const colorSchemes = {
+          hierarchical: ['hsl(260, 80%, 60%)', 'hsl(240, 70%, 55%)', 'hsl(220, 60%, 50%)', 'hsl(200, 50%, 45%)'],
+          radial: ['hsl(260, 80%, 60%)', 'hsl(190, 80%, 60%)', 'hsl(150, 70%, 55%)', 'hsl(280, 70%, 60%)'],
+          linear: ['hsl(260, 80%, 60%)', 'hsl(240, 75%, 58%)', 'hsl(220, 70%, 56%)', 'hsl(200, 65%, 54%)'],
+          network: ['hsl(260, 80%, 60%)', 'hsl(190, 80%, 60%)', 'hsl(280, 70%, 60%)', 'hsl(150, 70%, 55%)'],
+          matrix: ['hsl(260, 80%, 60%)', 'hsl(190, 80%, 60%)', 'hsl(280, 70%, 60%)', 'hsl(150, 70%, 55%)']
+        };
+        const scheme = colorSchemes[diagramType as keyof typeof colorSchemes] || colorSchemes.network;
+        return scheme[index % scheme.length];
+      };
+
+      // Create nodes using AI-specified positions and colors
+      const insertPromises = nodesData.map((nodeData: any, index: number) => {
         return supabase.from('nodes').insert({
           mind_map_id: mindMapId,
           user_id: user.user.id,
           label: nodeData.label,
           content: nodeData.content,
           position_x: baseX + (nodeData.x || 0),
-          position_y: baseY + (nodeData.y || 0)
+          position_y: baseY + (nodeData.y || 0),
+          color: getNodeColor(index, nodesData.length)
         }).select().single();
       });
       const results = await Promise.all(insertPromises);
@@ -307,6 +323,8 @@ const MindMapCanvasInner = ({
         data: {
           label: node.label,
           content: node.content,
+          color: node.color,
+          diagramType: diagramType,
           onOpenPanel: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(true);
@@ -319,20 +337,8 @@ const MindMapCanvasInner = ({
       }));
       setNodes(nds => [...nds, ...newFlowNodes]);
 
-      // Create edges based on AI connections + parent node
+      // Create edges based ONLY on AI connections - trust the AI's layout decisions
       const edgesToCreate = [];
-
-      // Connect selected node to all new nodes if there's a parent
-      if (selectedNode) {
-        createdNodes.forEach(node => {
-          edgesToCreate.push({
-            mind_map_id: mindMapId,
-            source_node_id: selectedNode.id,
-            target_node_id: node.id,
-            user_id: user.user.id
-          });
-        });
-      }
 
       // Create AI-specified connections between nodes with handles
       nodesData.forEach((nodeData: any) => {
@@ -353,17 +359,18 @@ const MindMapCanvasInner = ({
       });
       if (edgesToCreate.length > 0) {
         await supabase.from('edges').insert(edgesToCreate);
-        const newEdges = edgesToCreate.map(edge => ({
-          id: `${edge.source_node_id}-${edge.target_node_id}`,
+        const newEdges = edgesToCreate.map((edge, idx) => ({
+          id: `${edge.source_node_id}-${edge.target_node_id}-${idx}`,
           source: edge.source_node_id,
           target: edge.target_node_id,
           sourceHandle: edge.source_handle,
           targetHandle: edge.target_handle,
-          type: 'smoothstep',
+          type: diagramType === 'hierarchical' ? 'smoothstep' : 'default',
           animated: true,
           style: {
             stroke: 'hsl(var(--accent))',
-            strokeWidth: 2
+            strokeWidth: 2.5,
+            strokeDasharray: diagramType === 'network' ? '5,5' : undefined
           }
         }));
         setEdges(eds => [...eds, ...newEdges]);
@@ -483,17 +490,27 @@ const MindMapCanvasInner = ({
       {/* AI Toolbar - Only when node selected but panel closed */}
       {selectedNode && !isPanelOpen && (
         <div 
-          className="absolute z-10 flex gap-2 bg-card backdrop-blur-md p-4 rounded-xl border-2 border-primary/30 shadow-xl animate-fade-in"
+          className="absolute z-10 flex flex-col gap-2 bg-card/95 backdrop-blur-lg p-4 rounded-xl border-2 border-primary/40 shadow-2xl animate-fade-in"
           style={{
             left: `${selectedNode.position.x}px`,
             top: `${selectedNode.position.y + 150}px`,
           }}
         >
-          <Input placeholder="Generate nodes with AI..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} onKeyPress={e => e.key === 'Enter' && generateWithAI()} className="w-64" />
-          <Button onClick={generateWithAI} disabled={isGenerating} className="gap-2">
-            <Sparkles className="w-4 h-4" />
-            {isGenerating ? 'Generating...' : 'Generate'}
-          </Button>
+          <div className="text-xs text-muted-foreground font-medium">Expand from: {String(selectedNode.data.label)}</div>
+          <div className="flex gap-2">
+            <Input 
+              placeholder="Generate nodes with AI..." 
+              value={aiPrompt} 
+              onChange={e => setAiPrompt(e.target.value)} 
+              onKeyPress={e => e.key === 'Enter' && !isGenerating && generateWithAI()} 
+              className="w-80"
+              disabled={isGenerating}
+            />
+            <Button onClick={generateWithAI} disabled={isGenerating} className="gap-2 min-w-[120px]">
+              <Sparkles className="w-4 h-4" />
+              {isGenerating ? 'Generating...' : 'Generate'}
+            </Button>
+          </div>
         </div>
       )}
 
