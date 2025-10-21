@@ -365,6 +365,7 @@ const MindMapCanvasInner = ({
         setEdges(eds => [...eds, ...newEdges]);
       }
       setAiPrompt('');
+      setSelectedNode(null);
       toast.success(`Generated ${createdNodes.length} nodes in ${diagramType} layout!`);
     } catch (error) {
       console.error('AI generation error:', error);
