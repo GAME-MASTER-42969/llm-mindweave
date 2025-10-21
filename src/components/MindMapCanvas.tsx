@@ -427,16 +427,19 @@ const MindMapCanvasInner = ({
         <MiniMap nodeColor={() => 'hsl(var(--primary))'} maskColor="hsl(var(--background) / 0.8)" />
       </ReactFlow>
 
-      {/* Floating Toolbar */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 bg-card backdrop-blur-md p-4 rounded-xl border-2 border-primary/30 shadow-xl animate-fade-in">
-        <Input placeholder="Generate node with AI..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} onKeyPress={e => e.key === 'Enter' && generateWithAI()} className="w-64" />
-        <Button onClick={generateWithAI} disabled={isGenerating} className="gap-2">
-          <Sparkles className="w-4 h-4" />
-          {isGenerating ? 'Generating...' : 'Generate'}
+      {/* Add Node Button - Always Visible */}
+      <div className="absolute top-4 left-4 z-10">
+        <Button onClick={addNewNode} className="gap-2 shadow-lg">
+          <Plus className="w-4 h-4" />
+          Add Node
         </Button>
+      </div>
+
+      {/* Clear All Button - Always Visible */}
+      <div className="absolute top-4 right-4 z-10">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" className="gap-2" disabled={isClearing}>
+            <Button variant="destructive" className="gap-2 shadow-lg" disabled={isClearing}>
               <Trash2 className="w-4 h-4" />
               Clear All
             </Button>
@@ -455,6 +458,23 @@ const MindMapCanvasInner = ({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      {/* AI Toolbar - Only when node selected */}
+      {selectedNode && (
+        <div 
+          className="absolute z-10 flex gap-2 bg-card backdrop-blur-md p-4 rounded-xl border-2 border-primary/30 shadow-xl animate-fade-in"
+          style={{
+            left: `${selectedNode.position.x}px`,
+            top: `${selectedNode.position.y + 150}px`,
+          }}
+        >
+          <Input placeholder="Generate nodes with AI..." value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} onKeyPress={e => e.key === 'Enter' && generateWithAI()} className="w-64" />
+          <Button onClick={generateWithAI} disabled={isGenerating} className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            {isGenerating ? 'Generating...' : 'Generate'}
+          </Button>
+        </div>
+      )}
 
       {/* Side Panel */}
       <NodePanel node={selectedNode} isOpen={isPanelOpen} onClose={() => {
