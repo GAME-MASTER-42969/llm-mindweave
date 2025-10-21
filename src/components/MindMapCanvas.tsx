@@ -54,6 +54,10 @@ const MindMapCanvasInner = ({
           onOpenPanel: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(true);
+          },
+          onSelectForAI: (node: Node) => {
+            setSelectedNode(node);
+            setIsPanelOpen(false);
           }
         }
       }));
@@ -156,6 +160,10 @@ const MindMapCanvasInner = ({
           onOpenPanel: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(true);
+          },
+          onSelectForAI: (node: Node) => {
+            setSelectedNode(node);
+            setIsPanelOpen(false);
           }
         }
       };
@@ -233,6 +241,10 @@ const MindMapCanvasInner = ({
         onOpenPanel: (node: Node) => {
           setSelectedNode(node);
           setIsPanelOpen(true);
+        },
+        onSelectForAI: (node: Node) => {
+          setSelectedNode(node);
+          setIsPanelOpen(false);
         }
       }
     };
@@ -298,6 +310,10 @@ const MindMapCanvasInner = ({
           onOpenPanel: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(true);
+          },
+          onSelectForAI: (n: Node) => {
+            setSelectedNode(n);
+            setIsPanelOpen(false);
           }
         }
       }));

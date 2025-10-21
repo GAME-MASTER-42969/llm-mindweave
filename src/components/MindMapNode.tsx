@@ -1,5 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
+import { Sparkles, FileText } from 'lucide-react';
+import { Button } from './ui/button';
 
 interface CustomNodeProps {
   data: {
@@ -7,20 +9,35 @@ interface CustomNodeProps {
     content?: string;
     color?: string;
     onOpenPanel?: (node: any) => void;
+    onSelectForAI?: (node: any) => void;
   };
   id: string;
 }
 
 export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
   const handleClick = () => {
+    if (data.onSelectForAI) {
+      data.onSelectForAI({ id, data, position: { x: 0, y: 0 }, type: 'custom' });
+    }
+  };
+
+  const handleOpenPanel = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (data.onOpenPanel) {
       data.onOpenPanel({ id, data, position: { x: 0, y: 0 }, type: 'custom' });
     }
   };
 
+  const handleAIClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (data.onSelectForAI) {
+      data.onSelectForAI({ id, data, position: { x: 0, y: 0 }, type: 'custom' });
+    }
+  };
+
   return (
     <div
-      className="px-4 py-2 rounded-lg border-2 border-primary/50 bg-card shadow-md hover:shadow-lg transition-all duration-300 min-w-[120px] max-w-[180px] cursor-pointer group hover:scale-105"
+      className="px-4 py-2 rounded-lg border-2 border-primary/50 bg-card shadow-md hover:shadow-lg transition-all duration-300 min-w-[120px] max-w-[180px] cursor-pointer group hover:scale-105 relative"
       onClick={handleClick}
     >
       <Handle
@@ -49,6 +66,26 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
         className="w-2 h-2 !bg-accent border-2 border-background"
       />
       
+      {/* Action buttons - shown on hover */}
+      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <Button
+          size="icon"
+          variant="secondary"
+          className="h-6 w-6 rounded-full shadow-lg"
+          onClick={handleAIClick}
+        >
+          <Sparkles className="h-3 w-3" />
+        </Button>
+        <Button
+          size="icon"
+          variant="secondary"
+          className="h-6 w-6 rounded-full shadow-lg"
+          onClick={handleOpenPanel}
+        >
+          <FileText className="h-3 w-3" />
+        </Button>
+      </div>
+
       <div className="text-center">
         <div className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
           {data.label}
