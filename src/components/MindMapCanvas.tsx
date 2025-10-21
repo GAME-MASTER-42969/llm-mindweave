@@ -459,8 +459,8 @@ const MindMapCanvasInner = ({
         </AlertDialog>
       </div>
 
-      {/* AI Toolbar - Only when node selected */}
-      {selectedNode && (
+      {/* AI Toolbar - Only when node selected but panel closed */}
+      {selectedNode && !isPanelOpen && (
         <div 
           className="absolute z-10 flex gap-2 bg-card backdrop-blur-md p-4 rounded-xl border-2 border-primary/30 shadow-xl animate-fade-in"
           style={{
