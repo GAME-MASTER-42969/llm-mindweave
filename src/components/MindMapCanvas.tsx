@@ -24,6 +24,7 @@ const MindMapCanvasInner = ({
   const [aiPrompt, setAiPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isAddNodeMode, setIsAddNodeMode] = useState(false);
   const {
     screenToFlowPosition
   } = useReactFlow();
@@ -32,6 +33,20 @@ const MindMapCanvasInner = ({
   useEffect(() => {
     loadMindMap();
   }, [mindMapId]);
+
+  // Hotkey for add node mode
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === '1' && !isGenerating && !isPanelOpen) {
+        setIsAddNodeMode(prev => !prev);
+      }
+      if (e.key === 'Escape' && isAddNodeMode) {
+        setIsAddNodeMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isAddNodeMode, isGenerating, isPanelOpen]);
   const loadMindMap = async () => {
     const {
       data: nodesData
@@ -207,18 +222,21 @@ const MindMapCanvasInner = ({
       position_y: node.position.y
     }).eq('id', node.id);
   };
-  const addNewNode = async () => {
+  const addNewNode = async (position?: { x: number; y: number }) => {
     const {
       data: user
     } = await supabase.auth.getUser();
     if (!user.user) return;
+    
+    const pos = position || { x: Math.random() * 500, y: Math.random() * 500 };
+    
     const newNode = {
       mind_map_id: mindMapId,
       user_id: user.user.id,
       label: 'New Node',
       content: 'Add your notes here...',
-      position_x: Math.random() * 500,
-      position_y: Math.random() * 500
+      position_x: pos.x,
+      position_y: pos.y
     };
     const {
       data,
@@ -250,6 +268,17 @@ const MindMapCanvasInner = ({
     };
     setNodes(nds => [...nds, flowNode]);
     toast.success('Node created');
+  };
+
+  const onPaneClick = (event: React.MouseEvent) => {
+    if (isAddNodeMode) {
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY
+      });
+      addNewNode(position);
+      setIsAddNodeMode(false);
+    }
   };
   const generateWithAI = async () => {
     if (!aiPrompt.trim()) {
@@ -447,18 +476,47 @@ const MindMapCanvasInner = ({
     }
   };
   return <div className="w-full h-screen relative">
-      <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onConnectEnd={onConnectEnd} onNodeDragStop={onNodeDragStop} nodeTypes={nodeTypes} fitView>
+      <ReactFlow 
+        nodes={nodes} 
+        edges={edges} 
+        onNodesChange={onNodesChange} 
+        onEdgesChange={onEdgesChange} 
+        onConnect={onConnect} 
+        onConnectEnd={onConnectEnd} 
+        onNodeDragStop={onNodeDragStop} 
+        onPaneClick={onPaneClick}
+        nodeTypes={nodeTypes} 
+        fitView
+        className={isAddNodeMode ? 'cursor-crosshair' : ''}
+      >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-        
-        <MiniMap nodeColor={() => 'hsl(var(--primary))'} maskColor="hsl(var(--background) / 0.8)" />
+        <Controls />
+        <MiniMap 
+          nodeColor={(node) => (node.data.color as string) || 'hsl(var(--primary))'} 
+          maskColor="hsl(var(--card) / 0.9)"
+          className="!bg-card !border-2 !border-primary/30 !rounded-lg !shadow-lg"
+          style={{ 
+            backgroundColor: 'hsl(var(--card))',
+            border: '2px solid hsl(var(--primary) / 0.3)'
+          }}
+        />
       </ReactFlow>
 
-      {/* Add Node Button - Always Visible */}
-      <div className="absolute top-4 left-4 z-10">
-        <Button onClick={addNewNode} className="gap-2 shadow-lg">
+      {/* Add Node Button - Bottom Left */}
+      <div className="absolute bottom-6 left-6 z-10 flex flex-col gap-2">
+        <Button 
+          onClick={() => setIsAddNodeMode(!isAddNodeMode)} 
+          className={`gap-2 shadow-lg transition-all ${isAddNodeMode ? 'bg-accent hover:bg-accent/90 ring-2 ring-accent-foreground' : ''}`}
+          variant={isAddNodeMode ? 'default' : 'secondary'}
+        >
           <Plus className="w-4 h-4" />
-          Add Node
+          {isAddNodeMode ? 'Click to Place' : 'Add Node (1)'}
         </Button>
+        {isAddNodeMode && (
+          <div className="text-xs text-muted-foreground bg-card/90 backdrop-blur px-3 py-2 rounded-lg border border-border animate-fade-in">
+            Click anywhere to add a node (ESC to cancel)
+          </div>
+        )}
       </div>
 
       {/* Clear All Button - Always Visible */}
