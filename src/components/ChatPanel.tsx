@@ -14,9 +14,10 @@ interface Message {
 interface ChatPanelProps {
   isOpen: boolean;
   node: Node | null;
+  onNodeUpdate: (nodeId: string, updates: any) => void;
 }
 
-export const ChatPanel = ({ isOpen, node }: ChatPanelProps) => {
+export const ChatPanel = ({ isOpen, node, onNodeUpdate }: ChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -90,6 +91,31 @@ export const ChatPanel = ({ isOpen, node }: ChatPanelProps) => {
         });
       };
 
+      const handleToolCall = (toolCall: any) => {
+        if (!node) return;
+
+        const functionName = toolCall.function?.name;
+        const args = JSON.parse(toolCall.function?.arguments || '{}');
+
+        switch (functionName) {
+          case 'update_content':
+            onNodeUpdate(node.id, { content: args.content });
+            updateAssistant(`\n\n✓ Updated note content`);
+            break;
+          case 'add_link':
+            const currentLinks = node.data.links || [];
+            const newLink = { url: args.url, title: args.title || args.url };
+            onNodeUpdate(node.id, { links: [...(currentLinks as any[]), newLink] });
+            updateAssistant(`\n\n✓ Added link: ${args.url}`);
+            break;
+          case 'add_image_url':
+            const currentImages = node.data.images || [];
+            onNodeUpdate(node.id, { images: [...(currentImages as any[]), { url: args.url }] });
+            updateAssistant(`\n\n✓ Added image`);
+            break;
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -110,8 +136,15 @@ export const ChatPanel = ({ isOpen, node }: ChatPanelProps) => {
           
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) updateAssistant(content);
+            const delta = parsed.choices?.[0]?.delta;
+            
+            if (delta?.content) {
+              updateAssistant(delta.content);
+            }
+            
+            if (delta?.tool_calls) {
+              delta.tool_calls.forEach((tc: any) => handleToolCall(tc));
+            }
           } catch {
             textBuffer = line + '\n' + textBuffer;
             break;

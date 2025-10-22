@@ -19,15 +19,76 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are a helpful AI assistant for a mind mapping application. 
-${nodeContext ? `\n\nCurrent node context:\nTitle: ${nodeContext.label}\nNotes: ${nodeContext.content || 'No notes yet'}\nLinks: ${nodeContext.links?.length || 0} reference links\nImages: ${nodeContext.images?.length || 0} images\nDocuments: ${nodeContext.documents?.length || 0} documents` : ''}
+    const systemPrompt = nodeContext 
+      ? `You are a helpful AI assistant for a mind mapping application. 
+         The user is currently working on a node with the following details:
+         - Label: ${nodeContext.label}
+         - Content: ${nodeContext.content || 'No content yet'}
+         - Links: ${nodeContext.links?.length || 0} link(s)
+         - Images: ${nodeContext.images?.length || 0} image(s)
+         - Documents: ${nodeContext.documents?.length || 0} document(s)
+         
+         You can help the user by modifying the node data using the available tools.`
+      : 'You are a helpful AI assistant for a mind mapping application.';
 
-Help users by:
-- Summarizing and organizing their notes
-- Suggesting connections between ideas
-- Analyzing uploaded documents and images
-- Generating new ideas based on their content
-- Answering questions about their research`;
+    const tools = nodeContext ? [
+      {
+        type: 'function',
+        function: {
+          name: 'update_content',
+          description: 'Update the content/notes of the current node',
+          parameters: {
+            type: 'object',
+            properties: {
+              content: { type: 'string', description: 'The new content for the node' }
+            },
+            required: ['content']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'add_link',
+          description: 'Add a link to the current node',
+          parameters: {
+            type: 'object',
+            properties: {
+              url: { type: 'string', description: 'The URL to add' },
+              title: { type: 'string', description: 'Optional title for the link' }
+            },
+            required: ['url']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'add_image_url',
+          description: 'Add an image URL to the current node',
+          parameters: {
+            type: 'object',
+            properties: {
+              url: { type: 'string', description: 'The image URL to add' }
+            },
+            required: ['url']
+          }
+        }
+      }
+    ] : undefined;
+
+    const requestBody: any = {
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages,
+      ],
+      stream: true,
+    };
+
+    if (tools) {
+      requestBody.tools = tools;
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -35,14 +96,7 @@ Help users by:
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages,
-        ],
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

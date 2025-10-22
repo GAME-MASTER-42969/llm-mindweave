@@ -39,6 +39,42 @@ const MindMapCanvasInner = ({
     loadMindMap();
   }, [mindMapId]);
 
+  // Listen for node updates from ChatPanel
+  useEffect(() => {
+    const handleUpdateNode = async (event: CustomEvent) => {
+      const { nodeId, updates } = event.detail;
+      
+      // Update local state
+      setNodes(nds => nds.map(n => {
+        if (n.id === nodeId) {
+          const updatedNode = { ...n, data: { ...n.data, ...updates } };
+          // Update selectedNode if this is the one being edited
+          if (selectedNode?.id === nodeId) {
+            setSelectedNode(updatedNode);
+            onNodePanelChange?.(updatedNode, true);
+          }
+          return updatedNode;
+        }
+        return n;
+      }));
+
+      // Update database
+      const dbUpdates: any = {};
+      if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.links !== undefined) dbUpdates.links = updates.links;
+      if (updates.images !== undefined) dbUpdates.images = updates.images;
+      if (updates.documents !== undefined) dbUpdates.documents = updates.documents;
+
+      if (Object.keys(dbUpdates).length > 0) {
+        await supabase.from('nodes').update(dbUpdates).eq('id', nodeId);
+        toast.success('Node updated by AI');
+      }
+    };
+
+    window.addEventListener('updateNode', handleUpdateNode as EventListener);
+    return () => window.removeEventListener('updateNode', handleUpdateNode as EventListener);
+  }, [selectedNode, onNodePanelChange]);
+
   // Hotkey for add node mode
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {

@@ -78,6 +78,13 @@ const Index = () => {
     setIsNodePanelOpen(isOpen);
   };
 
+  const handleNodeUpdate = (nodeId: string, updates: any) => {
+    // Forward update to MindMapCanvas via a custom event
+    window.dispatchEvent(new CustomEvent('updateNode', { 
+      detail: { nodeId, updates } 
+    }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -106,7 +113,11 @@ const Index = () => {
 
   return (
     <div className="relative w-full h-screen">
-      <ChatPanel isOpen={isNodePanelOpen} node={selectedNode} />
+      <ChatPanel 
+        isOpen={isNodePanelOpen} 
+        node={selectedNode} 
+        onNodeUpdate={handleNodeUpdate}
+      />
       <Button
         onClick={handleSignOut}
         variant="secondary"
