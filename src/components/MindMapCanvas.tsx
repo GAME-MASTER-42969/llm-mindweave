@@ -25,6 +25,7 @@ const MindMapCanvasInner = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isAddNodeMode, setIsAddNodeMode] = useState(false);
+  const [isAiToolbarDismissed, setIsAiToolbarDismissed] = useState(false);
   const {
     screenToFlowPosition
   } = useReactFlow();
@@ -73,6 +74,7 @@ const MindMapCanvasInner = ({
           onSelectForAI: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(false);
+            setIsAiToolbarDismissed(false);
           }
         }
       }));
@@ -179,6 +181,7 @@ const MindMapCanvasInner = ({
           onSelectForAI: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(false);
+            setIsAiToolbarDismissed(false);
           }
         }
       };
@@ -263,6 +266,7 @@ const MindMapCanvasInner = ({
         onSelectForAI: (node: Node) => {
           setSelectedNode(node);
           setIsPanelOpen(false);
+          setIsAiToolbarDismissed(false);
         }
       }
     };
@@ -359,6 +363,7 @@ const MindMapCanvasInner = ({
           onSelectForAI: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(false);
+            setIsAiToolbarDismissed(false);
           }
         }
       }));
@@ -544,7 +549,7 @@ const MindMapCanvasInner = ({
       </div>
 
       {/* AI Toolbar - Only when node selected but panel closed */}
-      {selectedNode && !isPanelOpen && (
+      {selectedNode && !isPanelOpen && !isAiToolbarDismissed && (
         <div 
           className="absolute z-10 flex flex-col gap-2 bg-card/95 backdrop-blur-lg p-4 rounded-xl border-2 border-primary/40 shadow-2xl animate-fade-in"
           style={{
@@ -552,7 +557,17 @@ const MindMapCanvasInner = ({
             top: `${selectedNode.position.y + 150}px`,
           }}
         >
-          <div className="text-xs text-muted-foreground font-medium">Expand from: {String(selectedNode.data.label)}</div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-xs text-muted-foreground font-medium">Expand from: {String(selectedNode.data.label)}</div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsAiToolbarDismissed(true)}
+              className="h-6 w-6 p-0 hover:bg-destructive/20"
+            >
+              <span className="text-lg leading-none">×</span>
+            </Button>
+          </div>
           <div className="flex gap-2">
             <Input 
               placeholder="Generate nodes with AI..." 
