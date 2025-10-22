@@ -11,14 +11,14 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, context } = await req.json();
+    const { prompt, context, baseX = 0, baseY = 0 } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    console.log('Generating node with prompt:', prompt);
+    console.log('Generating node with prompt:', prompt, 'Base position:', baseX, baseY);
 
     const systemPrompt = `You are an AI assistant creating professional mind map layouts. 
     When given a prompt, break it down into relevant subtopics with optimal visual organization.
@@ -31,12 +31,13 @@ serve(async (req) => {
     - "network": Interconnected web (complex relationships, systems thinking, multiple interdependencies)
     - "matrix": Grid layout (comparisons, 2D classifications, feature matrices)
     
-    POSITIONING STRATEGY:
-    - Hierarchical: Place parent at top (y: -500), children below (y: -200, 150, 500) with x spacing of 500px
-    - Radial: Center node at (0, 0), surrounding nodes at radius 600-700px in circular pattern
-    - Linear: Space nodes left-to-right with 550px horizontal gaps, y: 0 for main flow
-    - Network: Distribute evenly with minimum 450px between any two nodes, consider visual balance
-    - Matrix: Use grid cells 500px × 450px, align nodes to grid intersections
+    POSITIONING STRATEGY (RELATIVE TO BASE POINT ${baseX}, ${baseY}):
+    - All coordinates should be absolute positions calculated from this base point
+    - Hierarchical: Place parent near base, children spread below with 500px spacing
+    - Radial: Place center node at base point (${baseX}, ${baseY}), surrounding nodes at radius 600-700px
+    - Linear: Space nodes horizontally with 550px gaps, use baseY for alignment
+    - Network: Distribute around base point with minimum 450px between any two nodes
+    - Matrix: Create grid centered around base point with 500px × 450px cells
     
     CONNECTION HANDLES (critical for clean edges):
     Each node has 4 connection points: "top", "right", "bottom", "left"
@@ -51,12 +52,13 @@ serve(async (req) => {
     - targetHandle: which point on the target node ("top", "right", "bottom", "left")
     
     LAYOUT PRINCIPLES:
-    1. Maintain generous spacing (minimum 450px between nodes)
-    2. Create visual hierarchy through positioning
-    3. Group related concepts spatially
-    4. Minimize edge crossings by smart handle selection
-    5. Balance the overall composition
-    6. Use handle directions that match the diagram flow`;
+    1. Calculate absolute x,y positions - do not use offsets, the positions you provide are final
+    2. Maintain generous spacing (minimum 450px between nodes)
+    3. Create visual hierarchy through positioning
+    4. Group related concepts spatially
+    5. Minimize edge crossings by smart handle selection
+    6. Position new diagram to not overlap with existing content at origin (0,0)
+    7. Use the base point (${baseX}, ${baseY}) as the focal/reference point for this entire diagram`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -92,8 +94,8 @@ serve(async (req) => {
                         nodeId: { type: "number" },
                         label: { type: "string", description: "Concise label, max 40 characters" },
                         content: { type: "string", description: "Detailed explanation, 2-3 sentences" },
-                        x: { type: "number", description: "X position (-800 to 800), maintain 450px minimum spacing" },
-                        y: { type: "number", description: "Y position (-800 to 800), position according to diagram type" },
+                        x: { type: "number", description: "Absolute X position on canvas, maintain 450px minimum spacing between nodes" },
+                        y: { type: "number", description: "Absolute Y position on canvas, position according to diagram type" },
                         connections: { 
                           type: "array",
                           items: {

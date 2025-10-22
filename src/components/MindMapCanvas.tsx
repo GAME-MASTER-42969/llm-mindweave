@@ -268,17 +268,15 @@ const MindMapCanvasInner = ({
       } = await supabase.functions.invoke('generate-node', {
         body: {
           prompt: aiPrompt,
-          context: selectedNode?.data.label
+          context: selectedNode?.data.label,
+          baseX: selectedNode ? selectedNode.position.x : 0,
+          baseY: selectedNode ? selectedNode.position.y : 0
         }
       });
       if (error) throw error;
       const diagramType = data.diagramType || 'network';
       const nodesData = data.nodes || [];
       console.log(`Creating ${diagramType} diagram with ${nodesData.length} nodes`);
-      
-      // Calculate center point based on context
-      const baseX = selectedNode ? selectedNode.position.x + 200 : 400;
-      const baseY = selectedNode ? selectedNode.position.y : 300;
 
       // Assign colors based on diagram type and node hierarchy
       const getNodeColor = (index: number, total: number) => {
@@ -293,15 +291,15 @@ const MindMapCanvasInner = ({
         return scheme[index % scheme.length];
       };
 
-      // Create nodes using AI-specified positions and colors
+      // Create nodes using AI-specified positions (already calculated relative to base)
       const insertPromises = nodesData.map((nodeData: any, index: number) => {
         return supabase.from('nodes').insert({
           mind_map_id: mindMapId,
           user_id: user.user.id,
           label: nodeData.label,
           content: nodeData.content,
-          position_x: baseX + (nodeData.x || 0),
-          position_y: baseY + (nodeData.y || 0),
+          position_x: nodeData.x || 0,
+          position_y: nodeData.y || 0,
           color: getNodeColor(index, nodesData.length)
         }).select().single();
       });
