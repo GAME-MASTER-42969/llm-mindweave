@@ -548,14 +548,10 @@ const MindMapCanvasInner = ({
         </AlertDialog>
       </div>
 
-      {/* AI Toolbar - Only when node selected but panel closed */}
+      {/* AI Toolbar - Right of Add Node Button */}
       {selectedNode && !isPanelOpen && !isAiToolbarDismissed && (
         <div 
-          className="absolute z-10 flex flex-col gap-2 bg-card/95 backdrop-blur-lg p-4 rounded-xl border-2 border-primary/40 shadow-2xl animate-fade-in"
-          style={{
-            left: `${selectedNode.position.x}px`,
-            top: `${selectedNode.position.y + 150}px`,
-          }}
+          className="absolute bottom-6 left-56 z-10 flex flex-col gap-2 bg-card/95 backdrop-blur-lg p-4 rounded-xl border-2 border-primary/40 shadow-2xl animate-fade-in"
         >
           <div className="flex items-center justify-between gap-4">
             <div className="text-xs text-muted-foreground font-medium">Expand from: {String(selectedNode.data.label)}</div>
