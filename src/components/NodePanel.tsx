@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Node } from '@xyflow/react';
-import { X, Trash2, Save, Link as LinkIcon, Image, FileText, Plus, ExternalLink } from 'lucide-react';
+import { X, Trash2, Save, Link as LinkIcon, Image, FileText, Plus, ExternalLink, Upload } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface Link {
   id: string;
@@ -49,10 +51,15 @@ export const NodePanel = ({ node, isOpen, onClose, onUpdate, onDelete }: NodePan
   const [links, setLinks] = useState<Link[]>([]);
   const [images, setImages] = useState<MediaItem[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   // New link form
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  
+  // File input refs
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (node) {
@@ -106,6 +113,107 @@ export const NodePanel = ({ node, isOpen, onClose, onUpdate, onDelete }: NodePan
 
   const handleRemoveDocument = (id: string) => {
     setDocuments(documents.filter(doc => doc.id !== id));
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10485760) {
+      toast.error('Image must be less than 10MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('node-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('node-images')
+        .getPublicUrl(filePath);
+
+      const newImage: MediaItem = {
+        id: crypto.randomUUID(),
+        url: publicUrl,
+        type: 'upload',
+        name: file.name,
+      };
+
+      setImages([...images, newImage]);
+      toast.success('Image uploaded successfully');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
+
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (50MB)
+    if (file.size > 52428800) {
+      toast.error('Document must be less than 50MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('node-documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('node-documents')
+        .getPublicUrl(filePath);
+
+      const newDocument: Document = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        type: fileExt || 'file',
+        url: publicUrl,
+        size: file.size,
+      };
+
+      setDocuments([...documents, newDocument]);
+      toast.success('Document uploaded successfully');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload document');
+    } finally {
+      setIsUploading(false);
+      if (documentInputRef.current) documentInputRef.current.value = '';
+    }
   };
 
   const handleDelete = () => {
@@ -244,18 +352,26 @@ export const NodePanel = ({ node, isOpen, onClose, onUpdate, onDelete }: NodePan
 
               {/* Media Tab */}
               <TabsContent value="media" className="space-y-4 mt-4">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
                 <div className="flex gap-2">
                   <Button onClick={handleAddImageLink} variant="outline" className="flex-1">
                     <LinkIcon className="w-4 h-4 mr-2" />
-                    Add Image Link
+                    Add Link
                   </Button>
-                  <Button variant="outline" className="flex-1" disabled>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Upload (Soon)
-                  </Button>
-                  <Button variant="outline" className="flex-1" disabled>
-                    <Image className="w-4 h-4 mr-2" />
-                    Generate (Soon)
+                  <Button 
+                    onClick={() => imageInputRef.current?.click()} 
+                    variant="outline" 
+                    className="flex-1"
+                    disabled={isUploading}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload
                   </Button>
                 </div>
 
@@ -291,9 +407,20 @@ export const NodePanel = ({ node, isOpen, onClose, onUpdate, onDelete }: NodePan
 
               {/* Documents Tab */}
               <TabsContent value="documents" className="space-y-4 mt-4">
-                <Button variant="outline" className="w-full" disabled>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Upload Document (Coming Soon)
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  onChange={handleDocumentUpload}
+                  className="hidden"
+                />
+                <Button 
+                  onClick={() => documentInputRef.current?.click()} 
+                  variant="outline" 
+                  className="w-full"
+                  disabled={isUploading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Document
                 </Button>
 
                 <div className="space-y-2">
