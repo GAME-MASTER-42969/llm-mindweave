@@ -98,8 +98,11 @@ export type Database = {
           color: string | null
           content: string | null
           created_at: string
+          documents: Json | null
           id: string
+          images: Json | null
           label: string
+          links: Json | null
           mind_map_id: string
           position_x: number
           position_y: number
@@ -111,8 +114,11 @@ export type Database = {
           color?: string | null
           content?: string | null
           created_at?: string
+          documents?: Json | null
           id?: string
+          images?: Json | null
           label: string
+          links?: Json | null
           mind_map_id: string
           position_x?: number
           position_y?: number
@@ -124,8 +130,11 @@ export type Database = {
           color?: string | null
           content?: string | null
           created_at?: string
+          documents?: Json | null
           id?: string
+          images?: Json | null
           label?: string
+          links?: Json | null
           mind_map_id?: string
           position_x?: number
           position_y?: number

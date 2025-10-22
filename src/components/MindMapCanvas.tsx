@@ -420,6 +420,9 @@ const MindMapCanvasInner = ({
   const updateNode = async (nodeId: string, updates: {
     label?: string;
     content?: string;
+    links?: any[];
+    images?: any[];
+    documents?: any[];
   }) => {
     const {
       error
