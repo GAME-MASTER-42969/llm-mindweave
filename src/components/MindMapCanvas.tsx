@@ -12,11 +12,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const nodeTypes = {
   custom: MindMapNode
 };
-const MindMapCanvasInner = ({
-  mindMapId
-}: {
+interface MindMapCanvasInnerProps {
   mindMapId: string;
-}) => {
+  onNodePanelChange?: (node: Node | null, isOpen: boolean) => void;
+}
+
+const MindMapCanvasInner = ({
+  mindMapId,
+  onNodePanelChange
+}: MindMapCanvasInnerProps) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -70,10 +74,12 @@ const MindMapCanvasInner = ({
           onOpenPanel: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(true);
+            onNodePanelChange?.(node, true);
           },
           onSelectForAI: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(false);
+            onNodePanelChange?.(node, false);
             setIsAiToolbarDismissed(false);
           }
         }
@@ -177,10 +183,12 @@ const MindMapCanvasInner = ({
           onOpenPanel: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(true);
+            onNodePanelChange?.(node, true);
           },
           onSelectForAI: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(false);
+            onNodePanelChange?.(node, false);
             setIsAiToolbarDismissed(false);
           }
         }
@@ -262,10 +270,12 @@ const MindMapCanvasInner = ({
         onOpenPanel: (node: Node) => {
           setSelectedNode(node);
           setIsPanelOpen(true);
+          onNodePanelChange?.(node, true);
         },
         onSelectForAI: (node: Node) => {
           setSelectedNode(node);
           setIsPanelOpen(false);
+          onNodePanelChange?.(node, false);
           setIsAiToolbarDismissed(false);
         }
       }
@@ -359,10 +369,12 @@ const MindMapCanvasInner = ({
           onOpenPanel: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(true);
+            onNodePanelChange?.(n, true);
           },
           onSelectForAI: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(false);
+            onNodePanelChange?.(n, false);
             setIsAiToolbarDismissed(false);
           }
         }
@@ -453,6 +465,7 @@ const MindMapCanvasInner = ({
     setNodes(nds => nds.filter(node => node.id !== nodeId));
     setIsPanelOpen(false);
     setSelectedNode(null);
+    onNodePanelChange?.(null, false);
     toast.success('Node deleted');
   };
   const clearAllNodes = async () => {
@@ -475,6 +488,7 @@ const MindMapCanvasInner = ({
       setEdges([]);
       setSelectedNode(null);
       setIsPanelOpen(false);
+      onNodePanelChange?.(null, false);
       toast.success('Canvas cleared');
     } catch (error) {
       console.error('Clear error:', error);
@@ -586,17 +600,20 @@ const MindMapCanvasInner = ({
 
       {/* Side Panel */}
       <NodePanel node={selectedNode} isOpen={isPanelOpen} onClose={() => {
-      setIsPanelOpen(false);
-      setSelectedNode(null);
-    }} onUpdate={updateNode} onDelete={deleteNode} />
+        setIsPanelOpen(false);
+        setSelectedNode(null);
+        onNodePanelChange?.(null, false);
+      }} onUpdate={updateNode} onDelete={deleteNode} />
     </div>;
 };
-export const MindMapCanvas = ({
-  mindMapId
-}: {
+export const MindMapCanvas = ({ 
+  mindMapId,
+  onNodePanelChange 
+}: { 
   mindMapId: string;
+  onNodePanelChange?: (node: Node | null, isOpen: boolean) => void;
 }) => {
   return <ReactFlowProvider>
-      <MindMapCanvasInner mindMapId={mindMapId} />
+      <MindMapCanvasInner mindMapId={mindMapId} onNodePanelChange={onNodePanelChange} />
     </ReactFlowProvider>;
 };

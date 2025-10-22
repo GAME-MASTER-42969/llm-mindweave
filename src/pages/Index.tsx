@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Auth } from '@/components/Auth';
 import { MindMapCanvas } from '@/components/MindMapCanvas';
+import { ChatPanel } from '@/components/ChatPanel';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
+import { Node } from '@xyflow/react';
 
 const Index = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mindMapId, setMindMapId] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [isNodePanelOpen, setIsNodePanelOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -69,6 +73,11 @@ const Index = () => {
     toast.success('Signed out successfully');
   };
 
+  const handleNodePanelChange = (node: Node | null, isOpen: boolean) => {
+    setSelectedNode(node);
+    setIsNodePanelOpen(isOpen);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -97,6 +106,7 @@ const Index = () => {
 
   return (
     <div className="relative w-full h-screen">
+      <ChatPanel isOpen={isNodePanelOpen} node={selectedNode} />
       <Button
         onClick={handleSignOut}
         variant="secondary"
@@ -106,7 +116,7 @@ const Index = () => {
         <LogOut className="w-4 h-4" />
         Sign Out
       </Button>
-      <MindMapCanvas mindMapId={mindMapId} />
+      <MindMapCanvas mindMapId={mindMapId} onNodePanelChange={handleNodePanelChange} />
     </div>
   );
 };
