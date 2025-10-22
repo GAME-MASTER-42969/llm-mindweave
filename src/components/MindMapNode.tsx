@@ -50,26 +50,26 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
       <Handle
         type="target"
         position={Position.Top}
-        id="top-target"
+        id="top"
         className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Top}
-        id="top-source"
+        id="top"
         className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       
       <Handle
         type="target"
         position={Position.Left}
-        id="left-target"
+        id="left"
         className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Left}
-        id="left-source"
+        id="left"
         className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       
@@ -107,26 +107,26 @@ export const MindMapNode = memo(({ data, id }: CustomNodeProps) => {
       <Handle
         type="target"
         position={Position.Right}
-        id="right-target"
+        id="right"
         className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right-source"
+        id="right"
         className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       
       <Handle
         type="target"
         position={Position.Bottom}
-        id="bottom-target"
+        id="bottom"
         className="w-3 h-3 !bg-accent border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom-source"
+        id="bottom"
         className="w-3 h-3 !bg-primary border-2 border-card opacity-0 group-hover:opacity-100 transition-opacity"
       />
     </div>

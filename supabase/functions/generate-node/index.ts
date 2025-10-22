@@ -32,11 +32,11 @@ serve(async (req) => {
     - "matrix": Grid layout (comparisons, 2D classifications, feature matrices)
     
     POSITIONING STRATEGY:
-    - Hierarchical: Place parent at top (y: -400), children below (y: -150, 100, 350) with x spacing of 400px
-    - Radial: Center node at (0, 0), surrounding nodes at radius 450-500px in circular pattern
-    - Linear: Space nodes left-to-right with 450px horizontal gaps, y: 0 for main flow
-    - Network: Distribute evenly with minimum 350px between any two nodes, consider visual balance
-    - Matrix: Use grid cells 400px × 350px, align nodes to grid intersections
+    - Hierarchical: Place parent at top (y: -500), children below (y: -200, 150, 500) with x spacing of 500px
+    - Radial: Center node at (0, 0), surrounding nodes at radius 600-700px in circular pattern
+    - Linear: Space nodes left-to-right with 550px horizontal gaps, y: 0 for main flow
+    - Network: Distribute evenly with minimum 450px between any two nodes, consider visual balance
+    - Matrix: Use grid cells 500px × 450px, align nodes to grid intersections
     
     CONNECTION HANDLES (critical for clean edges):
     Each node has 4 connection points: "top", "right", "bottom", "left"
@@ -51,7 +51,7 @@ serve(async (req) => {
     - targetHandle: which point on the target node ("top", "right", "bottom", "left")
     
     LAYOUT PRINCIPLES:
-    1. Maintain generous spacing (minimum 350px between nodes)
+    1. Maintain generous spacing (minimum 450px between nodes)
     2. Create visual hierarchy through positioning
     3. Group related concepts spatially
     4. Minimize edge crossings by smart handle selection
@@ -92,8 +92,8 @@ serve(async (req) => {
                         nodeId: { type: "number" },
                         label: { type: "string", description: "Concise label, max 40 characters" },
                         content: { type: "string", description: "Detailed explanation, 2-3 sentences" },
-                        x: { type: "number", description: "X position (-600 to 600), maintain 350px minimum spacing" },
-                        y: { type: "number", description: "Y position (-600 to 600), position according to diagram type" },
+                        x: { type: "number", description: "X position (-800 to 800), maintain 450px minimum spacing" },
+                        y: { type: "number", description: "Y position (-800 to 800), position according to diagram type" },
                         connections: { 
                           type: "array",
                           items: {
