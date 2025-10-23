@@ -1,14 +1,29 @@
 import { useState, useRef, useEffect } from 'react';
 import { Node } from '@xyflow/react';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Check, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface PendingChange {
+  nodeId: string;
+  nodeName: string;
+  changeType: string;
+  updates: any;
+  description: string;
 }
 
 interface ChatPanelProps {
@@ -16,12 +31,14 @@ interface ChatPanelProps {
   node: Node | null;
   allNodes: Node[];
   onNodeUpdate: (nodeId: string, updates: any) => void;
+  onNodeSelect: (nodeId: string) => void;
 }
 
-export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate }: ChatPanelProps) => {
+export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }: ChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/node-chat`;
 
@@ -98,27 +115,44 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate }: ChatPanelPro
         const targetNode = allNodes.find(n => n.id === args.nodeId);
         if (!targetNode) return;
 
+        let changeDescription = '';
+        let updates: any = {};
+
         switch (functionName) {
           case 'update_node_content':
-            onNodeUpdate(args.nodeId, { content: args.content });
-            updateAssistant(`\n\n✓ Updated content for "${targetNode.data.label}"`);
+            updates = { content: args.content };
+            changeDescription = `Update content for "${String(targetNode.data.label)}"`;
             break;
           case 'update_node_label':
-            onNodeUpdate(args.nodeId, { label: args.label });
-            updateAssistant(`\n\n✓ Updated label to "${args.label}"`);
+            updates = { label: args.label };
+            changeDescription = `Change label from "${String(targetNode.data.label)}" to "${args.label}"`;
             break;
           case 'add_node_link':
             const currentLinks = targetNode.data.links || [];
             const newLink = { url: args.url, title: args.title || args.url };
-            onNodeUpdate(args.nodeId, { links: [...(currentLinks as any[]), newLink] });
-            updateAssistant(`\n\n✓ Added link to "${targetNode.data.label}"`);
+            updates = { links: [...(currentLinks as any[]), newLink] };
+            changeDescription = `Add link "${args.title || args.url}" to "${String(targetNode.data.label)}"`;
             break;
           case 'add_node_image':
             const currentImages = targetNode.data.images || [];
-            onNodeUpdate(args.nodeId, { images: [...(currentImages as any[]), { url: args.url }] });
-            updateAssistant(`\n\n✓ Added image to "${targetNode.data.label}"`);
+            updates = { images: [...(currentImages as any[]), { url: args.url }] };
+            changeDescription = `Add image to "${String(targetNode.data.label)}"`;
             break;
         }
+
+        // Show pending change for approval
+        setPendingChange({
+          nodeId: args.nodeId,
+          nodeName: String(targetNode.data.label),
+          changeType: functionName,
+          updates,
+          description: changeDescription,
+        });
+
+        // Select the node to show its panel
+        onNodeSelect(args.nodeId);
+
+        updateAssistant(`\n\n⏳ Waiting for approval: ${changeDescription}`);
       };
 
       while (true) {
@@ -165,10 +199,51 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate }: ChatPanelPro
     }
   };
 
+  const handleApprove = () => {
+    if (!pendingChange) return;
+    
+    onNodeUpdate(pendingChange.nodeId, pendingChange.updates);
+    
+    setMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'assistant') {
+        return prev.map((m, i) => 
+          i === prev.length - 1 
+            ? { ...m, content: m.content.replace('⏳ Waiting for approval:', '✓ Applied:') }
+            : m
+        );
+      }
+      return prev;
+    });
+    
+    toast.success(`Applied changes to "${pendingChange.nodeName}"`);
+    setPendingChange(null);
+  };
+
+  const handleDecline = () => {
+    if (!pendingChange) return;
+    
+    setMessages(prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'assistant') {
+        return prev.map((m, i) => 
+          i === prev.length - 1 
+            ? { ...m, content: m.content.replace('⏳ Waiting for approval:', '✗ Declined:') }
+            : m
+        );
+      }
+      return prev;
+    });
+    
+    toast.info(`Declined changes to "${pendingChange.nodeName}"`);
+    setPendingChange(null);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed left-0 top-0 h-full w-full md:w-96 bg-card border-r border-border shadow-2xl z-50 flex flex-col animate-slide-in">
+    <>
+      <div className="fixed left-0 top-0 h-full w-full md:w-96 bg-card border-r border-border shadow-2xl z-50 flex flex-col animate-slide-in">
       {/* Header */}
       <div className="flex items-center gap-3 p-6 border-b border-border">
         <Bot className="w-6 h-6 text-primary" />
@@ -244,5 +319,27 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate }: ChatPanelPro
         </div>
       </div>
     </div>
+
+    <AlertDialog open={!!pendingChange} onOpenChange={() => {}}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Approve AI Edit</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingChange?.description}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={handleDecline} size="lg">
+            <X className="w-5 h-5 mr-2" />
+            Decline
+          </Button>
+          <Button onClick={handleApprove} size="lg">
+            <Check className="w-5 h-5 mr-2" />
+            Approve
+          </Button>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 };

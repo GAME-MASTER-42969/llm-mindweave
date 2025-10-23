@@ -122,6 +122,10 @@ const Index = () => {
         node={selectedNode}
         allNodes={allNodes}
         onNodeUpdate={handleNodeUpdate}
+        onNodeSelect={(nodeId) => {
+          const node = allNodes.find(n => n.id === nodeId);
+          if (node) setSelectedNode(node);
+        }}
       />
       <Button
         onClick={handleSignOut}
