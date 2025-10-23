@@ -14,10 +14,11 @@ interface Message {
 interface ChatPanelProps {
   isOpen: boolean;
   node: Node | null;
+  allNodes: Node[];
   onNodeUpdate: (nodeId: string, updates: any) => void;
 }
 
-export const ChatPanel = ({ isOpen, node, onNodeUpdate }: ChatPanelProps) => {
+export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate }: ChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,14 +40,6 @@ export const ChatPanel = ({ isOpen, node, onNodeUpdate }: ChatPanelProps) => {
     setIsLoading(true);
 
     try {
-      const nodeContext = node ? {
-        label: node.data.label,
-        content: node.data.content,
-        links: node.data.links,
-        images: node.data.images,
-        documents: node.data.documents,
-      } : null;
-
       const response = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -55,7 +48,14 @@ export const ChatPanel = ({ isOpen, node, onNodeUpdate }: ChatPanelProps) => {
         },
         body: JSON.stringify({ 
           messages: [...messages, userMessage],
-          nodeContext 
+          allNodes: allNodes.map(n => ({
+            id: n.id,
+            label: n.data.label,
+            content: n.data.content,
+            links: n.data.links,
+            images: n.data.images,
+            documents: n.data.documents,
+          }))
         }),
       });
 
@@ -92,26 +92,31 @@ export const ChatPanel = ({ isOpen, node, onNodeUpdate }: ChatPanelProps) => {
       };
 
       const handleToolCall = (toolCall: any) => {
-        if (!node) return;
-
         const functionName = toolCall.function?.name;
         const args = JSON.parse(toolCall.function?.arguments || '{}');
 
+        const targetNode = allNodes.find(n => n.id === args.nodeId);
+        if (!targetNode) return;
+
         switch (functionName) {
-          case 'update_content':
-            onNodeUpdate(node.id, { content: args.content });
-            updateAssistant(`\n\n✓ Updated note content`);
+          case 'update_node_content':
+            onNodeUpdate(args.nodeId, { content: args.content });
+            updateAssistant(`\n\n✓ Updated content for "${targetNode.data.label}"`);
             break;
-          case 'add_link':
-            const currentLinks = node.data.links || [];
+          case 'update_node_label':
+            onNodeUpdate(args.nodeId, { label: args.label });
+            updateAssistant(`\n\n✓ Updated label to "${args.label}"`);
+            break;
+          case 'add_node_link':
+            const currentLinks = targetNode.data.links || [];
             const newLink = { url: args.url, title: args.title || args.url };
-            onNodeUpdate(node.id, { links: [...(currentLinks as any[]), newLink] });
-            updateAssistant(`\n\n✓ Added link: ${args.url}`);
+            onNodeUpdate(args.nodeId, { links: [...(currentLinks as any[]), newLink] });
+            updateAssistant(`\n\n✓ Added link to "${targetNode.data.label}"`);
             break;
-          case 'add_image_url':
-            const currentImages = node.data.images || [];
-            onNodeUpdate(node.id, { images: [...(currentImages as any[]), { url: args.url }] });
-            updateAssistant(`\n\n✓ Added image`);
+          case 'add_node_image':
+            const currentImages = targetNode.data.images || [];
+            onNodeUpdate(args.nodeId, { images: [...(currentImages as any[]), { url: args.url }] });
+            updateAssistant(`\n\n✓ Added image to "${targetNode.data.label}"`);
             break;
         }
       };
@@ -170,7 +175,7 @@ export const ChatPanel = ({ isOpen, node, onNodeUpdate }: ChatPanelProps) => {
         <div>
           <h2 className="text-xl font-bold text-foreground">AI Assistant</h2>
           <p className="text-xs text-muted-foreground">
-            {node ? `Helping with: ${node.data.label}` : 'Ask me anything'}
+            Working with {allNodes.length} node{allNodes.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>

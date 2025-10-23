@@ -14,7 +14,7 @@ const nodeTypes = {
 };
 interface MindMapCanvasInnerProps {
   mindMapId: string;
-  onNodePanelChange?: (node: Node | null, isOpen: boolean) => void;
+  onNodePanelChange?: (node: Node | null, isOpen: boolean, nodes?: Node[]) => void;
 }
 
 const MindMapCanvasInner = ({
@@ -45,22 +45,26 @@ const MindMapCanvasInner = ({
       const { nodeId, updates } = event.detail;
       
       // Update local state
-      setNodes(nds => nds.map(n => {
-        if (n.id === nodeId) {
-          const updatedNode = { ...n, data: { ...n.data, ...updates } };
-          // Update selectedNode if this is the one being edited
-          if (selectedNode?.id === nodeId) {
-            setSelectedNode(updatedNode);
-            onNodePanelChange?.(updatedNode, true);
+      setNodes(nds => {
+        const updated = nds.map(n => {
+          if (n.id === nodeId) {
+            const updatedNode = { ...n, data: { ...n.data, ...updates } };
+            // Update selectedNode if this is the one being edited
+            if (selectedNode?.id === nodeId) {
+              setSelectedNode(updatedNode);
+              onNodePanelChange?.(updatedNode, true, updated);
+            }
+            return updatedNode;
           }
-          return updatedNode;
-        }
-        return n;
-      }));
+          return n;
+        });
+        return updated;
+      });
 
       // Update database
       const dbUpdates: any = {};
       if (updates.content !== undefined) dbUpdates.content = updates.content;
+      if (updates.label !== undefined) dbUpdates.label = updates.label;
       if (updates.links !== undefined) dbUpdates.links = updates.links;
       if (updates.images !== undefined) dbUpdates.images = updates.images;
       if (updates.documents !== undefined) dbUpdates.documents = updates.documents;
@@ -107,15 +111,18 @@ const MindMapCanvasInner = ({
           label: node.label,
           content: node.content,
           color: node.color,
+          links: node.links,
+          images: node.images,
+          documents: node.documents,
           onOpenPanel: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(true);
-            onNodePanelChange?.(node, true);
+            onNodePanelChange?.(node, true, flowNodes);
           },
           onSelectForAI: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(false);
-            onNodePanelChange?.(node, false);
+            onNodePanelChange?.(node, false, flowNodes);
             setIsAiToolbarDismissed(false);
           }
         }
@@ -219,12 +226,12 @@ const MindMapCanvasInner = ({
           onOpenPanel: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(true);
-            onNodePanelChange?.(node, true);
+            onNodePanelChange?.(node, true, nodes);
           },
           onSelectForAI: (node: Node) => {
             setSelectedNode(node);
             setIsPanelOpen(false);
-            onNodePanelChange?.(node, false);
+            onNodePanelChange?.(node, false, nodes);
             setIsAiToolbarDismissed(false);
           }
         }
@@ -306,12 +313,12 @@ const MindMapCanvasInner = ({
         onOpenPanel: (node: Node) => {
           setSelectedNode(node);
           setIsPanelOpen(true);
-          onNodePanelChange?.(node, true);
+          onNodePanelChange?.(node, true, nodes);
         },
         onSelectForAI: (node: Node) => {
           setSelectedNode(node);
           setIsPanelOpen(false);
-          onNodePanelChange?.(node, false);
+          onNodePanelChange?.(node, false, nodes);
           setIsAiToolbarDismissed(false);
         }
       }
@@ -405,12 +412,12 @@ const MindMapCanvasInner = ({
           onOpenPanel: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(true);
-            onNodePanelChange?.(n, true);
+            onNodePanelChange?.(n, true, nodes);
           },
           onSelectForAI: (n: Node) => {
             setSelectedNode(n);
             setIsPanelOpen(false);
-            onNodePanelChange?.(n, false);
+            onNodePanelChange?.(n, false, nodes);
             setIsAiToolbarDismissed(false);
           }
         }

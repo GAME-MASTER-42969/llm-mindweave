@@ -14,6 +14,7 @@ const Index = () => {
   const [mindMapId, setMindMapId] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isNodePanelOpen, setIsNodePanelOpen] = useState(false);
+  const [allNodes, setAllNodes] = useState<Node[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -73,9 +74,12 @@ const Index = () => {
     toast.success('Signed out successfully');
   };
 
-  const handleNodePanelChange = (node: Node | null, isOpen: boolean) => {
+  const handleNodePanelChange = (node: Node | null, isOpen: boolean, nodes?: Node[]) => {
     setSelectedNode(node);
     setIsNodePanelOpen(isOpen);
+    if (nodes) {
+      setAllNodes(nodes);
+    }
   };
 
   const handleNodeUpdate = (nodeId: string, updates: any) => {
@@ -115,7 +119,8 @@ const Index = () => {
     <div className="relative w-full h-screen">
       <ChatPanel 
         isOpen={isNodePanelOpen} 
-        node={selectedNode} 
+        node={selectedNode}
+        allNodes={allNodes}
         onNodeUpdate={handleNodeUpdate}
       />
       <Button

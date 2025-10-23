@@ -12,66 +12,89 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, nodeContext } = await req.json();
+    const { messages, allNodes } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = nodeContext 
+    const systemPrompt = allNodes && allNodes.length > 0
       ? `You are a helpful AI assistant for a mind mapping application. 
-         The user is currently working on a node with the following details:
-         - Label: ${nodeContext.label}
-         - Content: ${nodeContext.content || 'No content yet'}
-         - Links: ${nodeContext.links?.length || 0} link(s)
-         - Images: ${nodeContext.images?.length || 0} image(s)
-         - Documents: ${nodeContext.documents?.length || 0} document(s)
          
-         You can help the user by modifying the node data using the available tools.`
+         Here are all the nodes in the current mind map:
+         ${JSON.stringify(allNodes.map((n: any) => ({
+           id: n.id,
+           label: n.data?.label || n.label,
+           content: n.data?.content || n.content,
+           links: n.data?.links || n.links || [],
+           images: n.data?.images || n.images || [],
+           documents: n.data?.documents || n.documents || []
+         })), null, 2)}
+         
+         You can help the user by analyzing these nodes and updating any node's data using the available tools.
+         When the user asks you to edit or update information, identify which node(s) need to be updated and use the appropriate tools.`
       : 'You are a helpful AI assistant for a mind mapping application.';
 
-    const tools = nodeContext ? [
+    const tools = allNodes && allNodes.length > 0 ? [
       {
         type: 'function',
         function: {
-          name: 'update_content',
-          description: 'Update the content/notes of the current node',
+          name: 'update_node_content',
+          description: 'Update the content/notes of any node by ID',
           parameters: {
             type: 'object',
             properties: {
+              nodeId: { type: 'string', description: 'The ID of the node to update' },
               content: { type: 'string', description: 'The new content for the node' }
             },
-            required: ['content']
+            required: ['nodeId', 'content']
           }
         }
       },
       {
         type: 'function',
         function: {
-          name: 'add_link',
-          description: 'Add a link to the current node',
+          name: 'update_node_label',
+          description: 'Update the label/title of any node by ID',
           parameters: {
             type: 'object',
             properties: {
+              nodeId: { type: 'string', description: 'The ID of the node to update' },
+              label: { type: 'string', description: 'The new label for the node' }
+            },
+            required: ['nodeId', 'label']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'add_node_link',
+          description: 'Add a link to any node by ID',
+          parameters: {
+            type: 'object',
+            properties: {
+              nodeId: { type: 'string', description: 'The ID of the node to add the link to' },
               url: { type: 'string', description: 'The URL to add' },
               title: { type: 'string', description: 'Optional title for the link' }
             },
-            required: ['url']
+            required: ['nodeId', 'url']
           }
         }
       },
       {
         type: 'function',
         function: {
-          name: 'add_image_url',
-          description: 'Add an image URL to the current node',
+          name: 'add_node_image',
+          description: 'Add an image URL to any node by ID',
           parameters: {
             type: 'object',
             properties: {
+              nodeId: { type: 'string', description: 'The ID of the node to add the image to' },
               url: { type: 'string', description: 'The image URL to add' }
             },
-            required: ['url']
+            required: ['nodeId', 'url']
           }
         }
       }
