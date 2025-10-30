@@ -115,7 +115,7 @@ serve(async (req) => {
         { role: 'system', content: systemPrompt },
         ...messages,
       ],
-      stream: true,
+      stream: false,
       max_completion_tokens: 4000,
     };
 
@@ -153,8 +153,9 @@ serve(async (req) => {
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+    const data = await response.json();
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Chat error:', error);
