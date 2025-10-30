@@ -115,7 +115,6 @@ serve(async (req) => {
         { role: 'system', content: systemPrompt },
         ...messages,
       ],
-      stream: false,
       max_completion_tokens: 4000,
     };
 
