@@ -13,14 +13,14 @@ serve(async (req) => {
 
   try {
     const { messages, allNodes } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
     const systemPrompt = allNodes && allNodes.length > 0
-      ? `You are a helpful AI assistant for a mind mapping application. 
+      ? `You are a helpful AI assistant for a mind mapping application with web research capabilities.
          
          Here are all the nodes in the current mind map:
          ${JSON.stringify(allNodes.map((n: any) => ({
@@ -32,9 +32,18 @@ serve(async (req) => {
            documents: n.data?.documents || n.documents || []
          })), null, 2)}
          
-         You can help the user by analyzing these nodes and updating any node's data using the available tools.
+         You can help the user by:
+         1. Researching topics and providing detailed, accurate information
+         2. Analyzing the mind map nodes and suggesting updates
+         3. Updating any node's data using the available tools
+         
+         When conducting research:
+         - Provide comprehensive, well-researched answers
+         - Include relevant facts, statistics, and insights
+         - Cite key information when applicable
+         
          When the user asks you to edit or update information, identify which node(s) need to be updated and use the appropriate tools.`
-      : 'You are a helpful AI assistant for a mind mapping application.';
+      : 'You are a helpful AI assistant for a mind mapping application with web research capabilities.';
 
     const tools = allNodes && allNodes.length > 0 ? [
       {
@@ -101,22 +110,23 @@ serve(async (req) => {
     ] : undefined;
 
     const requestBody: any = {
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-5-mini-2025-08-07',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages,
       ],
       stream: true,
+      max_completion_tokens: 4000,
     };
 
     if (tools) {
       requestBody.tools = tools;
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
@@ -124,20 +134,20 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limits exceeded, please try again later.' }), {
+        return new Response(JSON.stringify({ error: 'OpenAI rate limit exceeded, please try again later.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'Payment required, please add funds to your Lovable AI workspace.' }), {
-          status: 402,
+      if (response.status === 401) {
+        return new Response(JSON.stringify({ error: 'Invalid OpenAI API key.' }), {
+          status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      return new Response(JSON.stringify({ error: 'AI gateway error' }), {
+      console.error('OpenAI API error:', response.status, errorText);
+      return new Response(JSON.stringify({ error: 'OpenAI API error', details: errorText }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
