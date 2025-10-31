@@ -13,10 +13,10 @@ serve(async (req) => {
 
   try {
     const { messages, allNodes } = await req.json();
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const systemPrompt = allNodes && allNodes.length > 0
@@ -44,9 +44,9 @@ serve(async (req) => {
          
          CRITICAL: When the user asks you to edit or update information:
          - If they say "all nodes" or reference multiple nodes, use the tools to update ALL relevant nodes
-         - You can make multiple tool calls in a single response - use this to update multiple nodes at once
-         - For bulk operations like "add info to all nodes", call the appropriate tool for each node
-         - Always use the available tools (update_node_content, update_node_label, add_node_link, add_node_image) to make changes`
+         - You can make multiple tool calls in a single response; use this to update multiple nodes at once (one tool call per node)
+         - For bulk requests like "add info to all nodes in the notes and links": for each node, call update_node_content with concise, relevant additions AND call add_node_link with 1-2 credible URLs when asked to add links
+         - For bulk changes, return tool calls only (no explanatory prose). Always use the available tools (update_node_content, update_node_label, add_node_link, add_node_image) to make changes`
       : 'You are a helpful AI assistant for a mind mapping application with web research capabilities.';
 
     const tools = allNodes && allNodes.length > 0 ? [
@@ -114,22 +114,23 @@ serve(async (req) => {
     ] : undefined;
 
     const requestBody: any = {
-      model: 'gpt-5-mini-2025-08-07',
+      model: 'google/gemini-2.5-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         ...messages,
       ],
-      max_completion_tokens: 4000,
+      max_completion_tokens: 1200,
+      tool_choice: 'auto',
     };
 
     if (tools) {
       requestBody.tools = tools;
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
@@ -137,20 +138,26 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'OpenAI rate limit exceeded, please try again later.' }), {
+        return new Response(JSON.stringify({ error: 'Rate limits exceeded, please try again later.' }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'Payment required, please add credits to your Lovable AI workspace.' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       if (response.status === 401) {
-        return new Response(JSON.stringify({ error: 'Invalid OpenAI API key.' }), {
+        return new Response(JSON.stringify({ error: 'Unauthorized AI gateway key.' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      return new Response(JSON.stringify({ error: 'OpenAI API error', details: errorText }), {
+      console.error('AI gateway error:', response.status, errorText);
+      return new Response(JSON.stringify({ error: 'AI gateway error', details: errorText }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
