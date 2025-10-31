@@ -42,7 +42,11 @@ serve(async (req) => {
          - Include relevant facts, statistics, and insights
          - Cite key information when applicable
          
-         When the user asks you to edit or update information, identify which node(s) need to be updated and use the appropriate tools.`
+         CRITICAL: When the user asks you to edit or update information:
+         - If they say "all nodes" or reference multiple nodes, use the tools to update ALL relevant nodes
+         - You can make multiple tool calls in a single response - use this to update multiple nodes at once
+         - For bulk operations like "add info to all nodes", call the appropriate tool for each node
+         - Always use the available tools (update_node_content, update_node_label, add_node_link, add_node_image) to make changes`
       : 'You are a helpful AI assistant for a mind mapping application with web research capabilities.';
 
     const tools = allNodes && allNodes.length > 0 ? [

@@ -26,6 +26,11 @@ interface PendingChange {
   description: string;
 }
 
+interface PendingChanges {
+  changes: PendingChange[];
+  messageIndex: number;
+}
+
 interface ChatPanelProps {
   isOpen: boolean;
   node: Node | null;
@@ -38,7 +43,7 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/node-chat`;
 
@@ -94,6 +99,7 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
       if (!message) throw new Error('No message in response');
 
       let assistantContent = message.content || '';
+      const collectedChanges: PendingChange[] = [];
 
       const handleToolCall = (toolCall: any) => {
         const functionName = toolCall.function?.name;
@@ -127,24 +133,29 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
             break;
         }
 
-        // Show pending change for approval
-        setPendingChange({
+        collectedChanges.push({
           nodeId: args.nodeId,
           nodeName: String(targetNode.data.label),
           changeType: functionName,
           updates,
           description: changeDescription,
         });
-
-        // Select the node to show its panel
-        onNodeSelect(args.nodeId);
-
-        assistantContent += `\n\n⏳ Waiting for approval: ${changeDescription}`;
       };
 
       // Handle tool calls if present
       if (message.tool_calls) {
         message.tool_calls.forEach((tc: any) => handleToolCall(tc));
+      }
+
+      // If we have changes, add them to pending and update message
+      if (collectedChanges.length > 0) {
+        assistantContent += `\n\n⏳ Waiting for approval (${collectedChanges.length} change${collectedChanges.length > 1 ? 's' : ''})`;
+        setPendingChanges({
+          changes: collectedChanges,
+          messageIndex: messages.length + 1, // +1 because we're adding user and assistant messages
+        });
+        // Select first node to show its panel
+        onNodeSelect(collectedChanges[0].nodeId);
       }
 
       // Add assistant message
@@ -158,43 +169,34 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
   };
 
   const handleApprove = () => {
-    if (!pendingChange) return;
+    if (!pendingChanges) return;
     
-    onNodeUpdate(pendingChange.nodeId, pendingChange.updates);
-    
-    setMessages(prev => {
-      const last = prev[prev.length - 1];
-      if (last?.role === 'assistant') {
-        return prev.map((m, i) => 
-          i === prev.length - 1 
-            ? { ...m, content: m.content.replace('⏳ Waiting for approval:', '✓ Applied:') }
-            : m
-        );
-      }
-      return prev;
+    // Apply all changes
+    pendingChanges.changes.forEach(change => {
+      onNodeUpdate(change.nodeId, change.updates);
     });
     
-    toast.success(`Applied changes to "${pendingChange.nodeName}"`);
-    setPendingChange(null);
+    setMessages(prev => prev.map((m, i) => 
+      i === pendingChanges.messageIndex 
+        ? { ...m, content: m.content.replace(/⏳ Waiting for approval.*/, `✓ Applied ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`) }
+        : m
+    ));
+    
+    toast.success(`Applied ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`);
+    setPendingChanges(null);
   };
 
   const handleDecline = () => {
-    if (!pendingChange) return;
+    if (!pendingChanges) return;
     
-    setMessages(prev => {
-      const last = prev[prev.length - 1];
-      if (last?.role === 'assistant') {
-        return prev.map((m, i) => 
-          i === prev.length - 1 
-            ? { ...m, content: m.content.replace('⏳ Waiting for approval:', '✗ Declined:') }
-            : m
-        );
-      }
-      return prev;
-    });
+    setMessages(prev => prev.map((m, i) => 
+      i === pendingChanges.messageIndex 
+        ? { ...m, content: m.content.replace(/⏳ Waiting for approval.*/, `✗ Declined ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`) }
+        : m
+    ));
     
-    toast.info(`Declined changes to "${pendingChange.nodeName}"`);
-    setPendingChange(null);
+    toast.info(`Declined ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`);
+    setPendingChanges(null);
   };
 
   if (!isOpen) return null;
@@ -278,22 +280,38 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
       </div>
     </div>
 
-    <AlertDialog open={!!pendingChange} onOpenChange={() => {}}>
-      <AlertDialogContent>
+    <AlertDialog open={!!pendingChanges} onOpenChange={() => {}}>
+      <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <AlertDialogHeader>
-          <AlertDialogTitle>Approve AI Edit</AlertDialogTitle>
+          <AlertDialogTitle>
+            Approve AI Edits ({pendingChanges?.changes.length || 0} change{pendingChanges?.changes.length !== 1 ? 's' : ''})
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {pendingChange?.description}
+            Review the changes the AI wants to make:
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="flex gap-2 justify-end">
+        <ScrollArea className="flex-1 pr-4">
+          <div className="space-y-3">
+            {pendingChanges?.changes.map((change, idx) => (
+              <div key={idx} className="p-3 rounded-lg bg-muted border border-border">
+                <p className="text-sm font-medium">{change.description}</p>
+                {change.updates.content && (
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    Content: {change.updates.content}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="flex gap-2 justify-end pt-4 border-t">
           <Button variant="outline" onClick={handleDecline} size="lg">
             <X className="w-5 h-5 mr-2" />
-            Decline
+            Decline All
           </Button>
           <Button onClick={handleApprove} size="lg">
             <Check className="w-5 h-5 mr-2" />
-            Approve
+            Approve All
           </Button>
         </div>
       </AlertDialogContent>
