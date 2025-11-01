@@ -195,6 +195,18 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
     setPendingChanges({ ...pendingChanges, changes: updatedChanges });
   };
 
+  const handleApproveAll = () => {
+    if (!pendingChanges) return;
+    const updatedChanges = pendingChanges.changes.map(c => ({ ...c, status: 'approved' as const }));
+    setPendingChanges({ ...pendingChanges, changes: updatedChanges });
+  };
+
+  const handleDeclineAll = () => {
+    if (!pendingChanges) return;
+    const updatedChanges = pendingChanges.changes.map(c => ({ ...c, status: 'declined' as const }));
+    setPendingChanges({ ...pendingChanges, changes: updatedChanges });
+  };
+
   const handleApplyChanges = () => {
     if (!pendingChanges) return;
     
@@ -306,8 +318,8 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
     </div>
 
     <AlertDialog open={!!pendingChanges} onOpenChange={() => {}}>
-      <AlertDialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
-        <AlertDialogHeader>
+      <AlertDialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <AlertDialogHeader className="flex-shrink-0">
           <AlertDialogTitle>
             Review AI Changes ({pendingChanges?.changes.length || 0} change{pendingChanges?.changes.length !== 1 ? 's' : ''})
           </AlertDialogTitle>
@@ -315,65 +327,84 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
             Approve or decline each change individually:
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <ScrollArea className="flex-1 pr-4 max-h-[50vh]">
-          <div className="space-y-3 py-2">
-            {pendingChanges?.changes.map((change, idx) => (
-              <div 
-                key={idx} 
-                className={`p-4 rounded-lg border transition-all ${
-                  change.status === 'approved' ? 'bg-green-500/10 border-green-500/50' :
-                  change.status === 'declined' ? 'bg-red-500/10 border-red-500/50' :
-                  'bg-muted border-border'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium mb-1">{change.description}</p>
-                    {change.updates.content && (
-                      <p className="text-xs text-muted-foreground mt-2 line-clamp-3 bg-background/50 p-2 rounded">
-                        {change.updates.content}
-                      </p>
-                    )}
-                    {change.updates.links && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Adding {change.updates.links.length - (change.updates.links.length - 1)} link(s)
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    {change.status === 'pending' ? (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleDeclineChange(idx)}
-                        >
-                          <X className="w-4 h-4 text-red-500" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleApproveChange(idx)}
-                        >
-                          <Check className="w-4 h-4 text-green-500" />
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="h-8 w-16 flex items-center justify-center text-xs font-medium">
-                        {change.status === 'approved' ? '✓ Yes' : '✗ No'}
-                      </div>
-                    )}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full pr-4">
+            <div className="space-y-3 py-2">
+              {pendingChanges?.changes.map((change, idx) => (
+                <div 
+                  key={idx} 
+                  className={`p-4 rounded-lg border transition-all ${
+                    change.status === 'approved' ? 'bg-green-500/10 border-green-500/50' :
+                    change.status === 'declined' ? 'bg-red-500/10 border-red-500/50' :
+                    'bg-muted border-border'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium mb-1">{change.description}</p>
+                      {change.updates.content && (
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-3 bg-background/50 p-2 rounded">
+                          {change.updates.content}
+                        </p>
+                      )}
+                      {change.updates.links && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Adding {change.updates.links.length - (change.updates.links.length - 1)} link(s)
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {change.status === 'pending' ? (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDeclineChange(idx)}
+                          >
+                            <X className="w-4 h-4 text-red-500" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleApproveChange(idx)}
+                          >
+                            <Check className="w-4 h-4 text-green-500" />
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="h-8 w-16 flex items-center justify-center text-xs font-medium">
+                          {change.status === 'approved' ? '✓ Yes' : '✗ No'}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+        <div className="flex gap-2 justify-between pt-4 border-t flex-shrink-0">
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleApproveAll}
+            >
+              <Check className="w-4 h-4 mr-1" />
+              Accept All
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleDeclineAll}
+            >
+              <X className="w-4 h-4 mr-1" />
+              Deny All
+            </Button>
           </div>
-        </ScrollArea>
-        <div className="flex gap-2 justify-end pt-4 border-t">
           <Button 
-            variant="outline" 
             onClick={handleApplyChanges}
             disabled={!hasDecisions}
           >
