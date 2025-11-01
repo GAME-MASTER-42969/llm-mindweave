@@ -48,16 +48,18 @@ const MindMapCanvasInner = ({
       setNodes(nds => {
         const updated = nds.map(n => {
           if (n.id === nodeId) {
-            const updatedNode = { ...n, data: { ...n.data, ...updates } };
-            // Update selectedNode if this is the one being edited
-            if (selectedNode?.id === nodeId) {
-              setSelectedNode(updatedNode);
-              onNodePanelChange?.(updatedNode, true, updated);
-            }
-            return updatedNode;
+            return { ...n, data: { ...n.data, ...updates } };
           }
           return n;
         });
+        
+        // Update selectedNode if this is the one being edited
+        const updatedNode = updated.find(n => n.id === nodeId);
+        if (updatedNode && selectedNode?.id === nodeId) {
+          setSelectedNode(updatedNode);
+          onNodePanelChange?.(updatedNode, true, updated);
+        }
+        
         return updated;
       });
 
