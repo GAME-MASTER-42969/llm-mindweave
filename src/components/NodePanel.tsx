@@ -293,24 +293,26 @@ export const NodePanel = ({ node, isOpen, onClose, onUpdate, onDelete }: NodePan
 
               {/* Links Tab */}
               <TabsContent value="links" className="space-y-4 mt-4">
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Add Reference Link</Label>
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
                     <Input
                       placeholder="Link title"
                       value={newLinkTitle}
                       onChange={(e) => setNewLinkTitle(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
                     />
-                    <Input
-                      placeholder="https://..."
-                      value={newLinkUrl}
-                      onChange={(e) => setNewLinkUrl(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
-                    />
-                    <Button onClick={handleAddLink} size="icon">
-                      <Plus className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://..."
+                        value={newLinkUrl}
+                        onChange={(e) => setNewLinkUrl(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+                        className="flex-1"
+                      />
+                      <Button onClick={handleAddLink} size="icon" className="flex-shrink-0">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -323,23 +325,24 @@ export const NodePanel = ({ node, isOpen, onClose, onUpdate, onDelete }: NodePan
                     links.map((link) => (
                       <div
                         key={link.id}
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
+                        className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{link.title}</p>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="font-medium text-sm break-words">{link.title}</p>
                           <a
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline flex items-center gap-1 truncate"
+                            className="text-xs text-primary hover:underline flex items-center gap-1 break-all"
                           >
-                            {link.url}
-                            <ExternalLink className="w-3 h-3" />
+                            <span className="line-clamp-2">{link.url}</span>
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
                           </a>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="flex-shrink-0 h-8 w-8"
                           onClick={() => handleRemoveLink(link.id)}
                         >
                           <X className="w-4 h-4" />

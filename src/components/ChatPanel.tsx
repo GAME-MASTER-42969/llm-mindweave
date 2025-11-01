@@ -24,6 +24,7 @@ interface PendingChange {
   changeType: string;
   updates: any;
   description: string;
+  status: 'pending' | 'approved' | 'declined';
 }
 
 interface PendingChanges {
@@ -139,6 +140,7 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
           changeType: functionName,
           updates,
           description: changeDescription,
+          status: 'pending',
         });
       };
 
@@ -168,36 +170,50 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
     }
   };
 
-  const handleApprove = () => {
+  const handleApproveChange = (index: number) => {
     if (!pendingChanges) return;
     
-    // Apply all changes
-    pendingChanges.changes.forEach(change => {
+    const updatedChanges = [...pendingChanges.changes];
+    updatedChanges[index].status = 'approved';
+    setPendingChanges({ ...pendingChanges, changes: updatedChanges });
+  };
+
+  const handleDeclineChange = (index: number) => {
+    if (!pendingChanges) return;
+    
+    const updatedChanges = [...pendingChanges.changes];
+    updatedChanges[index].status = 'declined';
+    setPendingChanges({ ...pendingChanges, changes: updatedChanges });
+  };
+
+  const handleApplyChanges = () => {
+    if (!pendingChanges) return;
+    
+    const approvedChanges = pendingChanges.changes.filter(c => c.status === 'approved');
+    
+    // Apply approved changes
+    approvedChanges.forEach(change => {
       onNodeUpdate(change.nodeId, change.updates);
     });
     
+    const declinedCount = pendingChanges.changes.filter(c => c.status === 'declined').length;
+    const statusText = approvedChanges.length > 0 
+      ? `✓ Applied ${approvedChanges.length} change${approvedChanges.length !== 1 ? 's' : ''}${declinedCount > 0 ? `, declined ${declinedCount}` : ''}`
+      : `✗ Declined all changes`;
+    
     setMessages(prev => prev.map((m, i) => 
       i === pendingChanges.messageIndex 
-        ? { ...m, content: m.content.replace(/⏳ Waiting for approval.*/, `✓ Applied ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`) }
+        ? { ...m, content: m.content.replace(/⏳ Waiting for approval.*/, statusText) }
         : m
     ));
     
-    toast.success(`Applied ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`);
+    if (approvedChanges.length > 0) {
+      toast.success(`Applied ${approvedChanges.length} change${approvedChanges.length !== 1 ? 's' : ''}`);
+    }
     setPendingChanges(null);
   };
 
-  const handleDecline = () => {
-    if (!pendingChanges) return;
-    
-    setMessages(prev => prev.map((m, i) => 
-      i === pendingChanges.messageIndex 
-        ? { ...m, content: m.content.replace(/⏳ Waiting for approval.*/, `✗ Declined ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`) }
-        : m
-    ));
-    
-    toast.info(`Declined ${pendingChanges.changes.length} change${pendingChanges.changes.length > 1 ? 's' : ''}`);
-    setPendingChanges(null);
-  };
+  const hasDecisions = pendingChanges?.changes.some(c => c.status !== 'pending') || false;
 
   if (!isOpen) return null;
 
@@ -281,37 +297,78 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
     </div>
 
     <AlertDialog open={!!pendingChanges} onOpenChange={() => {}}>
-      <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <AlertDialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Approve AI Edits ({pendingChanges?.changes.length || 0} change{pendingChanges?.changes.length !== 1 ? 's' : ''})
+            Review AI Changes ({pendingChanges?.changes.length || 0} change{pendingChanges?.changes.length !== 1 ? 's' : ''})
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Review the changes the AI wants to make:
+            Approve or decline each change individually:
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-3">
+        <ScrollArea className="flex-1 pr-4 max-h-[50vh]">
+          <div className="space-y-3 py-2">
             {pendingChanges?.changes.map((change, idx) => (
-              <div key={idx} className="p-3 rounded-lg bg-muted border border-border">
-                <p className="text-sm font-medium">{change.description}</p>
-                {change.updates.content && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                    Content: {change.updates.content}
-                  </p>
-                )}
+              <div 
+                key={idx} 
+                className={`p-4 rounded-lg border transition-all ${
+                  change.status === 'approved' ? 'bg-green-500/10 border-green-500/50' :
+                  change.status === 'declined' ? 'bg-red-500/10 border-red-500/50' :
+                  'bg-muted border-border'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium mb-1">{change.description}</p>
+                    {change.updates.content && (
+                      <p className="text-xs text-muted-foreground mt-2 line-clamp-3 bg-background/50 p-2 rounded">
+                        {change.updates.content}
+                      </p>
+                    )}
+                    {change.updates.links && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Adding {change.updates.links.length - (change.updates.links.length - 1)} link(s)
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    {change.status === 'pending' ? (
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleDeclineChange(idx)}
+                        >
+                          <X className="w-4 h-4 text-red-500" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleApproveChange(idx)}
+                        >
+                          <Check className="w-4 h-4 text-green-500" />
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="h-8 w-16 flex items-center justify-center text-xs font-medium">
+                        {change.status === 'approved' ? '✓ Yes' : '✗ No'}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </ScrollArea>
         <div className="flex gap-2 justify-end pt-4 border-t">
-          <Button variant="outline" onClick={handleDecline} size="lg">
-            <X className="w-5 h-5 mr-2" />
-            Decline All
-          </Button>
-          <Button onClick={handleApprove} size="lg">
-            <Check className="w-5 h-5 mr-2" />
-            Approve All
+          <Button 
+            variant="outline" 
+            onClick={handleApplyChanges}
+            disabled={!hasDecisions}
+          >
+            Apply Decisions
           </Button>
         </div>
       </AlertDialogContent>
