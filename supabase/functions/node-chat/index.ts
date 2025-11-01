@@ -32,6 +32,9 @@ serve(async (req) => {
            documents: n.data?.documents || n.documents || []
          })), null, 2)}
          
+         Node ID map (use these exact IDs in tool calls):
+         ${allNodes.map((n: any) => `- ${n.id} => "${n.data?.label || n.label || ''}"`).join('\n')}
+         
          You can help the user by:
          1. Researching topics and providing detailed, accurate information
          2. Analyzing the mind map nodes and suggesting updates
@@ -42,11 +45,13 @@ serve(async (req) => {
          - Include relevant facts, statistics, and insights
          - Cite key information when applicable
          
-         CRITICAL: When the user asks you to edit or update information:
-         - If they say "all nodes" or reference multiple nodes, use the tools to update ALL relevant nodes
-         - You can make multiple tool calls in a single response; use this to update multiple nodes at once (one tool call per node)
-         - For bulk requests like "add info to all nodes in the notes and links": for each node, call update_node_content with concise, relevant additions AND call add_node_link with 1-2 credible URLs when asked to add links
-         - For bulk changes, return tool calls only (no explanatory prose). Always use the available tools (update_node_content, update_node_label, add_node_link, add_node_image) to make changes`
+         CRITICAL editing rules:
+         - Never create new nodes. Only modify existing nodes using their nodeId from the map above.
+         - If the user refers to a node by name, resolve it to the correct nodeId from the map.
+         - Select the correct section tool: use update_node_content for Notes; add_node_link for Links; add_node_image for Media; update_node_label for Title.
+         - If they say "all nodes" or reference multiple nodes, issue one tool call per node (bulk).
+         - For bulk requests like "add info to all nodes in the notes and links": for each node, call update_node_content with concise, relevant additions AND call add_node_link with 1-2 credible URLs when asked to add links.
+         - For bulk changes, return tool calls only (no explanatory prose).`
       : 'You are a helpful AI assistant for a mind mapping application with web research capabilities.';
 
     const tools = allNodes && allNodes.length > 0 ? [
@@ -54,12 +59,16 @@ serve(async (req) => {
         type: 'function',
         function: {
           name: 'update_node_content',
-          description: 'Update the content/notes of any node by ID',
+          description: 'Update the content/notes of any existing node by ID (append to existing notes, do not replace unless explicitly asked).',
           parameters: {
             type: 'object',
             properties: {
-              nodeId: { type: 'string', description: 'The ID of the node to update' },
-              content: { type: 'string', description: 'The new content for the node' }
+              nodeId: { 
+                type: 'string', 
+                description: 'The ID of the node to update. Choose from the Node ID map above.',
+                enum: allNodes.map((n: any) => n.id)
+              },
+              content: { type: 'string', description: 'The content to add to the node\'s notes.' }
             },
             required: ['nodeId', 'content']
           }
@@ -73,7 +82,11 @@ serve(async (req) => {
           parameters: {
             type: 'object',
             properties: {
-              nodeId: { type: 'string', description: 'The ID of the node to update' },
+              nodeId: { 
+                type: 'string', 
+                description: 'The ID of the node to update. Choose from the Node ID map above.',
+                enum: allNodes.map((n: any) => n.id)
+              },
               label: { type: 'string', description: 'The new label for the node' }
             },
             required: ['nodeId', 'label']
@@ -84,11 +97,15 @@ serve(async (req) => {
         type: 'function',
         function: {
           name: 'add_node_link',
-          description: 'Add a link to any node by ID',
+          description: 'Add a link to any node by ID (links section).',
           parameters: {
             type: 'object',
             properties: {
-              nodeId: { type: 'string', description: 'The ID of the node to add the link to' },
+              nodeId: { 
+                type: 'string', 
+                description: 'The ID of the node to add the link to. Choose from the Node ID map above.',
+                enum: allNodes.map((n: any) => n.id)
+              },
               url: { type: 'string', description: 'The URL to add' },
               title: { type: 'string', description: 'Optional title for the link' }
             },
@@ -100,11 +117,15 @@ serve(async (req) => {
         type: 'function',
         function: {
           name: 'add_node_image',
-          description: 'Add an image URL to any node by ID',
+          description: 'Add an image URL to any node by ID (media section).',
           parameters: {
             type: 'object',
             properties: {
-              nodeId: { type: 'string', description: 'The ID of the node to add the image to' },
+              nodeId: { 
+                type: 'string', 
+                description: 'The ID of the node to add the image to. Choose from the Node ID map above.',
+                enum: allNodes.map((n: any) => n.id)
+              },
               url: { type: 'string', description: 'The image URL to add' }
             },
             required: ['nodeId', 'url']

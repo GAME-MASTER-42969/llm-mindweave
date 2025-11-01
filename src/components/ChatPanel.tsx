@@ -106,7 +106,14 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
         const functionName = toolCall.function?.name;
         const args = JSON.parse(toolCall.function?.arguments || '{}');
 
-        const targetNode = allNodes.find(n => n.id === args.nodeId);
+        const normalize = (s: any) => String(s || '').trim().toLowerCase();
+        let targetNode = allNodes.find(n => n.id === args.nodeId);
+        if (!targetNode && args.nodeLabel) {
+          targetNode = allNodes.find(n => normalize((n as any).data?.label) === normalize(args.nodeLabel));
+        }
+        if (!targetNode && args.label) {
+          targetNode = allNodes.find(n => normalize((n as any).data?.label) === normalize(args.label));
+        }
         if (!targetNode) return;
 
         let changeDescription = '';
@@ -114,8 +121,10 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
 
         switch (functionName) {
           case 'update_node_content':
-            updates = { content: args.content };
-            changeDescription = `Update content for "${String(targetNode.data.label)}"`;
+            const existingContent = String((targetNode as any).data?.content || '');
+            const appended = existingContent ? `${existingContent}\n\n${args.content}` : args.content;
+            updates = { content: appended };
+            changeDescription = `Append notes for "${String((targetNode as any).data.label)}"`;
             break;
           case 'update_node_label':
             updates = { label: args.label };
