@@ -211,16 +211,38 @@ export const ChatPanel = ({ isOpen, node, allNodes, onNodeUpdate, onNodeSelect }
     if (!pendingChanges) return;
     
     const approvedChanges = pendingChanges.changes.filter(c => c.status === 'approved');
+    const declinedChanges = pendingChanges.changes.filter(c => c.status === 'declined');
     
     // Apply approved changes
     approvedChanges.forEach(change => {
       onNodeUpdate(change.nodeId, change.updates);
     });
     
-    const declinedCount = pendingChanges.changes.filter(c => c.status === 'declined').length;
-    const statusText = approvedChanges.length > 0 
-      ? `✓ Applied ${approvedChanges.length} change${approvedChanges.length !== 1 ? 's' : ''}${declinedCount > 0 ? `, declined ${declinedCount}` : ''}`
-      : `✗ Declined all changes`;
+    // Build detailed status message showing which nodes were updated
+    let statusText = '';
+    
+    if (approvedChanges.length > 0) {
+      const changesByNode = approvedChanges.reduce((acc, change) => {
+        if (!acc[change.nodeName]) acc[change.nodeName] = [];
+        acc[change.nodeName].push(change.description.replace(/^.*"([^"]+)".*$/, '$1'));
+        return acc;
+      }, {} as Record<string, string[]>);
+      
+      const nodeSummaries = Object.entries(changesByNode).map(([nodeName, changes]) => 
+        `  • **${nodeName}**: ${changes.join(', ')}`
+      ).join('\n');
+      
+      statusText = `✓ **Applied ${approvedChanges.length} change${approvedChanges.length !== 1 ? 's' : ''}:**\n${nodeSummaries}`;
+    }
+    
+    if (declinedChanges.length > 0) {
+      if (statusText) statusText += '\n\n';
+      statusText += `✗ Declined ${declinedChanges.length} change${declinedChanges.length !== 1 ? 's' : ''}`;
+    }
+    
+    if (!statusText) {
+      statusText = '✗ No changes applied';
+    }
     
     setMessages(prev => prev.map((m, i) => 
       i === pendingChanges.messageIndex 
